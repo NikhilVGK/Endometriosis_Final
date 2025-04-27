@@ -125,7 +125,8 @@ npm run dev
 ```
 
 Provide any backend/frontend split or environment setup notes here.
-Download all the requirements in the venv and in the the global system of the system
+
+- Download all the requirements in the venv and in the the global system of the system
 ---
 
 ## 🧬 Future Scope
