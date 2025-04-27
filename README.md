@@ -114,10 +114,10 @@ Add images, GIFs, or screenshots if helpful!
 ### Local Setup:
 ```bash
 # Clone the repo
-git clone https://github.com/your-team/project-name
+git clone https://github.com/NikhilVGK/Endometriosis_Final.git
 
 # Install dependencies
-cd project-name
+cd Endometriosis_Final.git
 npm install
 
 # Start development server
