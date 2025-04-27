@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Assessment | EndoMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='response.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/edit_assessment.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">EndoMetrics</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/my_record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ session.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-clipboard-check me-2"></i>Assessment</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="assessment-form-container">
+            <h1 class="mb-4">Edit Assessment</h1>
+            
+            <form action="{{ url_for('edit_assessment', assessment_id=assessment.id) }}" method="POST">
+                <!-- Pain Assessment Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-heartbeat me-2"></i>Pain Assessment</h3>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Pain Level (1-10)</label>
+                        <div class="pain-scale">
+                            {% for i in range(1, 11) %}
+                                <div class="pain-level pain-level-{{ i }} {% if assessment.pain_level == i %}selected{% endif %}" 
+                                     data-value="{{ i }}" onclick="selectPainLevel(this)">
+                                    {{ i }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="pain_level" id="pain_level" value="{{ assessment.pain_level }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pain_location" class="form-label fw-bold">Pain Location</label>
+                        <input type="text" class="form-control" id="pain_location" name="pain_location" 
+                               placeholder="Where do you feel pain? (e.g., lower abdomen, back, etc.)" 
+                               value="{{ assessment.pain_location or '' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pain_description" class="form-label fw-bold">Pain Description</label>
+                        <textarea class="form-control" id="pain_description" name="pain_description" rows="3" 
+                                 placeholder="Describe your pain (e.g., sharp, dull, cramping, etc.)">{{ assessment.pain_description or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Symptoms Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Symptoms</h3>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Primary Symptoms</label>
+                        <div class="checkbox-group">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="menstrual_irregularity" value="1" 
+                                       {% if assessment.menstrual_irregularity %}checked{% endif %}>
+                                Menstrual Irregularity
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="hormone_abnormality" value="1" 
+                                       {% if assessment.hormone_abnormality %}checked{% endif %}>
+                                Hormone Abnormality
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="infertility" value="1" 
+                                       {% if assessment.infertility %}checked{% endif %}>
+                                Infertility Issues
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Additional Symptoms</label>
+                        <div class="checkbox-group">
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="bloating" 
+                                       {% if symptoms and 'bloating' in symptoms %}checked{% endif %}>
+                                Bloating
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="fatigue" 
+                                       {% if symptoms and 'fatigue' in symptoms %}checked{% endif %}>
+                                Fatigue
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="nausea" 
+                                       {% if symptoms and 'nausea' in symptoms %}checked{% endif %}>
+                                Nausea
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="headache" 
+                                       {% if symptoms and 'headache' in symptoms %}checked{% endif %}>
+                                Headache
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="dizziness" 
+                                       {% if symptoms and 'dizziness' in symptoms %}checked{% endif %}>
+                                Dizziness
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="backpain" 
+                                       {% if symptoms and 'backpain' in symptoms %}checked{% endif %}>
+                                Back Pain
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="mood_swings" 
+                                       {% if symptoms and 'mood_swings' in symptoms %}checked{% endif %}>
+                                Mood Swings
+                            </label>
+                            <label class="custom-checkbox">
+                                <input type="checkbox" name="symptoms" value="constipation" 
+                                       {% if symptoms and 'constipation' in symptoms %}checked{% endif %}>
+                                Constipation
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="other_symptoms" class="form-label fw-bold">Other Symptoms</label>
+                        <textarea class="form-control" id="other_symptoms" name="other_symptoms" rows="2" 
+                                 placeholder="Any other symptoms not listed above">{{ symptoms.other if symptoms and 'other' in symptoms else '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Medications Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-pills me-2"></i>Medications</h3>
+                    
+                    {% if active_medications %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Medications Taken</label>
+                            <div class="checkbox-group">
+                                {% for med in active_medications %}
+                                    <label class="custom-checkbox">
+                                        <input type="checkbox" name="medications_taken" value="{{ med.id }}" 
+                                               {% if med_ids and med.id in med_ids %}checked{% endif %}>
+                                        {{ med.name }}
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No active medications found. <a href="{{ url_for('add_medication') }}">Add medications</a> to track them with your assessments.</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Notes Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-sticky-note me-2"></i>Notes</h3>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label fw-bold">Additional Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                 placeholder="Any additional information about your condition">{{ assessment.notes or '' }}</textarea>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('assessment_detail', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2023 EndoMetrics. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function selectPainLevel(element) {
+            // Remove selected class from all pain levels
+            document.querySelectorAll('.pain-level').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked element
+            element.classList.add('selected');
+            
+            // Update hidden input value
+            document.getElementById('pain_level').value = element.getAttribute('data-value');
+        }
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

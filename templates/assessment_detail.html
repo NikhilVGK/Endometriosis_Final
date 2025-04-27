@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Details | EndoMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='response.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/assessment_detail.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">EndoMetrics</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/my_record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ session.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-clipboard-check me-2"></i>Assessment</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="assessment-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">Assessment Details</h1>
+                <div class="d-flex">
+                    <a href="{{ url_for('edit_assessment', assessment_id=assessment.id) }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-edit me-2"></i>Edit Assessment
+                    </a>
+                    <a href="{{ url_for('my_record') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to All Records
+                    </a>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="info-row">
+                    <div class="info-label">Date:</div>
+                    <div>{{ assessment.assessment_date.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                </div>
+            </div>
+            
+            <!-- Pain Assessment Section -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-heartbeat me-2"></i>Pain Assessment</h3>
+                
+                <div class="d-flex align-items-center mb-3">
+                    <div class="info-label">Pain Level:</div>
+                    <div>
+                        {% set pain_class = 'pain-level-low' if assessment.pain_level <= 3 else 'pain-level-medium' if assessment.pain_level <= 6 else 'pain-level-high' %}
+                        <span class="pain-level-badge {{ pain_class }}">{{ assessment.pain_level }}</span>
+                        <span class="ms-2">
+                            {% if assessment.pain_level <= 3 %}
+                                Mild pain
+                            {% elif assessment.pain_level <= 6 %}
+                                Moderate pain
+                            {% else %}
+                                Severe pain
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                {% if assessment.pain_location %}
+                <div class="info-row">
+                    <div class="info-label">Pain Location:</div>
+                    <div>{{ assessment.pain_location }}</div>
+                </div>
+                {% endif %}
+                
+                {% if assessment.pain_description %}
+                <div class="info-row">
+                    <div class="info-label">Pain Description:</div>
+                    <div>{{ assessment.pain_description }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Symptoms Section -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Symptoms</h3>
+                
+                <div class="mb-3">
+                    <div class="info-label mb-2">Primary Symptoms:</div>
+                    <div class="symptom-tags">
+                        {% if assessment.menstrual_irregularity %}
+                            <div class="symptom-tag">Menstrual Irregularity</div>
+                        {% endif %}
+                        {% if assessment.hormone_abnormality %}
+                            <div class="symptom-tag">Hormone Abnormality</div>
+                        {% endif %}
+                        {% if assessment.infertility %}
+                            <div class="symptom-tag">Infertility Issues</div>
+                        {% endif %}
+                        {% if not assessment.menstrual_irregularity and not assessment.hormone_abnormality and not assessment.infertility %}
+                            <div class="text-muted">None reported</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="info-label mb-2">Additional Symptoms:</div>
+                    <div class="symptom-tags">
+                        {% if symptoms %}
+                            {% for symptom, value in symptoms.items() %}
+                                {% if symptom != 'other' and value %}
+                                    <div class="symptom-tag">{{ symptom|capitalize }}</div>
+                                {% endif %}
+                            {% endfor %}
+                            {% if 'other' in symptoms %}
+                                <div class="mt-2">
+                                    <strong>Other:</strong> {{ symptoms.other }}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-muted">None reported</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Medications Section -->
+            {% if medications %}
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-pills me-2"></i>Medications</h3>
+                
+                <div class="info-label mb-2">Medications Taken:</div>
+                <ul class="list-group">
+                    {% for med in medications %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ med.name }}</strong>
+                                {% if med.dosage %}
+                                    <span class="ms-2">{{ med.dosage }}</span>
+                                {% endif %}
+                            </div>
+                            {% if med.frequency %}
+                                <span class="badge bg-light text-dark">{{ med.frequency }}</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <!-- Notes Section -->
+            {% if assessment.notes %}
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-sticky-note me-2"></i>Notes</h3>
+                <p>{{ assessment.notes|replace('\n', '<br>')|safe }}</p>
+            </div>
+            {% endif %}
+            
+            <!-- Prediction Section -->
+            {% if assessment.prediction_result %}
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-chart-line me-2"></i>Assessment Results</h3>
+                
+                <div class="model-prediction">
+                    <h4 class="prediction-title">
+                        <i class="fas fa-robot me-2"></i>AI Model Prediction
+                    </h4>
+                    
+                    <div class="info-row">
+                        <div class="info-label">Prediction:</div>
+                        <div>{{ assessment.prediction_result }}</div>
+                    </div>
+                    
+                    {% if assessment.confidence_score %}
+                    <div class="info-row">
+                        <div class="info-label">Confidence:</div>
+                        <div class="w-100">
+                            {{ (assessment.confidence_score * 100)|round(1) }}%
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: {{ (assessment.confidence_score * 100)|round(1) }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3 text-muted">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            This is an AI-assisted prediction based on your reported symptoms. 
+                            Please consult with a healthcare professional for a proper diagnosis.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2023 EndoMetrics. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

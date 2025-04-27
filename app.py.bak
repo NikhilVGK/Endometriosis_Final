@@ -1,0 +1,2236 @@
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, flash, session, make_response
+from utils.tts_generator import TTSGenerator
+from utils.vision_analyzer import VisionAnalyzer
+from utils.llm_enhancer import LlamaEnhancer
+from utils.stt_processor import STTProcessor
+from utils.groq_stt_processor import GroqSTTProcessor
+import os
+import tensorflow as tf
+import pickle
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.layers import (
+    TextVectorization, Input, Embedding, LSTM, Dense, concatenate,
+    Conv2D, MaxPooling2D, Flatten, Dropout
+)
+from tensorflow.keras.models import Model
+import tempfile
+import json
+from pathlib import Path
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
+from sqlalchemy import text
+import uuid
+import random
+import re
+import calendar
+import hashlib
+import secrets
+import shutil
+from matplotlib import pyplot as plt
+import base64
+from io import BytesIO
+import pandas as pd
+import requests
+import traceback
+
+
+# Constants from training
+IMG_WIDTH, IMG_HEIGHT = 224, 224
+IMG_CHANNELS = 3
+IMG_SHAPE = (IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS)
+TABULAR_FEATURES = 6
+MAX_WORDS = 1000
+MAX_LENGTH = 100
+EMBEDDING_DIM = 64
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'endometrics_default_secret_key')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///endometrics.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+
+# User model for authentication
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    date_of_birth = db.Column(db.Date)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    profile_picture = db.Column(db.String(255))  # Path to user-uploaded image
+    avatar_choice = db.Column(db.Integer, default=0)  # Index of selected avatar if no custom image
+    
+    # Relationships
+    assessments = db.relationship('Assessment', backref='user', lazy=True)
+    medications = db.relationship('Medication', backref='user', lazy=True)
+    med_taken_records = db.relationship('MedicationTaken', backref='user', lazy=True)
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+# Assessment model for storing user health assessments
+class Assessment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    assessment_date = db.Column(db.DateTime, default=datetime.utcnow)
+    assessment_hour = db.Column(db.Integer, default=0)  # Hour of the day (0-23)
+    
+    # Pain details
+    pain_level = db.Column(db.Integer)  # Scale 0-10
+    pain_location = db.Column(db.String(100))
+    pain_description = db.Column(db.Text)
+    
+    # Symptoms
+    menstrual_irregularity = db.Column(db.Boolean, default=False)
+    hormone_abnormality = db.Column(db.Boolean, default=False)
+    infertility = db.Column(db.Boolean, default=False)
+    
+    # Additional data
+    symptoms = db.Column(db.Text)  # JSON string of symptoms
+    medications_taken = db.Column(db.Text)  # JSON string of medications taken
+    notes = db.Column(db.Text)
+    
+    # Model prediction result
+    prediction_result = db.Column(db.String(100))  # e.g., "Stage I (Minimal)"
+    confidence_score = db.Column(db.Float)  # 0-1
+    report_content = db.Column(db.Text)  # Stored generated report content
+    
+    def __repr__(self):
+        return f'<Assessment {self.id} for User {self.user_id}>'
+    
+    def to_dict(self):
+        """Convert assessment to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'date': self.assessment_date.strftime('%Y-%m-%d'),
+            'hour': self.assessment_hour,
+            'pain_level': self.pain_level,
+            'pain_location': self.pain_location,
+            'prediction': self.prediction_result,
+            'confidence': f"{self.confidence_score * 100:.1f}%" if self.confidence_score else None,
+            'symptoms': json.loads(self.symptoms) if self.symptoms else {},
+            'notes': self.notes
+        }
+
+# Medication model for tracking medications
+class Medication(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    dosage = db.Column(db.String(50))
+    frequency = db.Column(db.String(50))  # e.g., "Once daily", "Twice daily"
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    active = db.Column(db.Boolean, default=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Medication {self.name} for User {self.user_id}>'
+    
+    def to_dict(self):
+        """Convert medication to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'dosage': self.dosage,
+            'frequency': self.frequency,
+            'start_date': self.start_date.strftime('%Y-%m-%d') if self.start_date else None,
+            'end_date': self.end_date.strftime('%Y-%m-%d') if self.end_date else None,
+            'active': self.active,
+            'notes': self.notes
+        }
+
+# Medication taken tracking model
+class MedicationTaken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    medication_id = db.Column(db.Integer, db.ForeignKey('medication.id'), nullable=False)
+    taken_date = db.Column(db.Date, default=datetime.utcnow().date)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    medication = db.relationship('Medication', backref='taken_records', lazy=True)
+    
+    def __repr__(self):
+        return f'<MedicationTaken {self.medication_id} on {self.taken_date}>'
+
+# User Story model for sharing experiences
+class Story(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    allow_sharing = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='stories', lazy=True)
+    
+    def __repr__(self):
+        return f'<Story {self.id} by User {self.user_id}>'
+    
+    def to_dict(self):
+        """Convert story to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'content': self.content,
+            'created_at': self.created_at.strftime('%Y-%m-%d'),
+            'user_first_name': self.user.first_name if self.user.first_name else 'Anonymous User',
+            'allow_sharing': self.allow_sharing
+        }
+
+# Feedback model for user feedback
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Nullable to allow anonymous feedback
+    category = db.Column(db.String(50), nullable=False)  # UI/UX, Features, Bug Reports, etc.
+    rating = db.Column(db.Integer)  # Rating scale 1-5
+    subject = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='Pending')  # Pending, Reviewed, Addressed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref='feedback', lazy=True)
+    
+    def __repr__(self):
+        return f'<Feedback {self.id} - {self.subject}>'
+    
+    def to_dict(self):
+        """Convert feedback to dictionary for API responses"""
+        return {
+            'id': self.id,
+            'category': self.category,
+            'rating': self.rating,
+            'subject': self.subject,
+            'message': self.message,
+            'status': self.status,
+            'created_at': self.created_at.strftime('%Y-%m-%d'),
+            'user_name': self.user.first_name if self.user and self.user.first_name else 'Anonymous User'
+        }
+
+# Initialize services
+tts = TTSGenerator()
+vision = VisionAnalyzer()
+llm_enhancer = LlamaEnhancer()
+stt = STTProcessor()
+groq_stt = GroqSTTProcessor()
+
+# Authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login to access this page.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def build_image_model(input_shape):
+    image_input = Input(shape=input_shape, name='image_input')
+    x = Conv2D(32, (3, 3), activation='relu')(image_input)
+    x = MaxPooling2D((2, 2))(x)
+    x = Conv2D(64, (3, 3), activation='relu')(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Conv2D(128, (3, 3), activation='relu')(x)
+    x = MaxPooling2D((2, 2))(x)
+    x = Flatten()(x)
+    image_features = Dense(128, activation='relu', name='image_features')(x)
+    return Model(inputs=image_input, outputs=image_features)
+
+def build_tabular_model(input_shape):
+    tabular_input = Input(shape=(input_shape,), name='tabular_input')
+    x = Dense(64, activation='relu')(tabular_input)
+    x = Dropout(0.5)(x)
+    tabular_features = Dense(32, activation='relu', name='tabular_features')(x)
+    return Model(inputs=tabular_input, outputs=tabular_features)
+
+def build_text_model():
+    text_input = Input(shape=(1,), dtype=tf.string, name='text_input')
+    vectorize_layer = TextVectorization(
+        max_tokens=MAX_WORDS,
+        output_mode='int',
+        output_sequence_length=MAX_LENGTH,
+        standardize='lower_and_strip_punctuation'
+    )
+    x = vectorize_layer(text_input)
+    x = Embedding(MAX_WORDS + 1, EMBEDDING_DIM)(x)
+    x = LSTM(32)(x)
+    text_features = Dense(32, activation='relu', name='text_features')(x)
+    return Model(inputs=text_input, outputs=text_features), vectorize_layer
+
+def build_combined_model(image_model, tabular_model, text_model):
+    combined_features = concatenate([
+        image_model.output,
+        tabular_model.output,
+        text_model.output
+    ])
+    x = Dense(64, activation='relu')(combined_features)
+    x = Dropout(0.5)(x)
+    output = Dense(1, activation='sigmoid', name='combined_output')(x)
+    return Model(
+        inputs=[image_model.input, tabular_model.input, text_model.input],
+        outputs=output
+    )
+
+# Initialize models
+print("Building model architecture...")
+image_model = build_image_model(IMG_SHAPE)
+tabular_model = build_tabular_model(TABULAR_FEATURES)
+text_model, vectorize_layer = build_text_model()
+
+# Load vectorization config and adapt layer
+print("Loading vectorization config...")
+config_path = 'models/vectorize_config.pkl'
+if not os.path.exists(config_path):
+    raise FileNotFoundError(f"Vectorize config not found at {config_path}")
+with open(config_path, 'rb') as f:
+    vectorize_config = pickle.load(f)
+
+# Initialize vectorization layer with saved vocabulary
+print("Initializing vectorization layer...")
+vectorize_layer.adapt(tf.constant(["dummy text"]))  # Initialize layer
+vectorize_layer.set_vocabulary(vectorize_config['vocabulary'])
+
+# Build combined model
+print("Building combined model...")
+combined_model = build_combined_model(image_model, tabular_model, text_model)
+
+# Load trained weights
+print("Loading model weights...")
+weights_path = 'models/combined_model.h5'
+if not os.path.exists(weights_path):
+    raise FileNotFoundError(f"Model weights not found at {weights_path}")
+combined_model.load_weights(weights_path)
+
+# Initialize scaler
+scaler = StandardScaler()
+dummy_data = np.array([[30, 5, 25]])
+scaler.fit(dummy_data)
+
+# Auth routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        # Check if user exists and password is correct
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            
+            flash('Login successful!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
+        else:
+            flash('Invalid username or password.', 'danger')
+    
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        
+        # Validate input
+        if not username or not email or not password:
+            flash('All fields are required.', 'danger')
+            return render_template('register.html', 
+                                 username=username if username else "",
+                                 email=email if email else "", 
+                                 first_name=first_name, 
+                                 last_name=last_name)
+            
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('register.html', username=username, email=email, 
+                                 first_name=first_name, last_name=last_name)
+            
+        # Check if username or email already exists
+        if User.query.filter_by(username=username).first():
+            flash('Username already taken.', 'danger')
+            return render_template('register.html', email=email, 
+                                 first_name=first_name, last_name=last_name)
+            
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered.', 'danger')
+            return render_template('register.html', username=username, 
+                                 first_name=first_name, last_name=last_name)
+            
+        # Create new user
+        new_user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('Registration successful! Please log in.', 'success')
+        return redirect(url_for('login'))
+        
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    session.pop('username', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    user = User.query.get(session['user_id'])
+    
+    # Get user's assessments, ordered by date (most recent first)
+    assessments = Assessment.query.filter_by(
+        user_id=session['user_id']
+    ).order_by(Assessment.assessment_date.desc()).all()
+    
+    return render_template('profile.html', user=user, assessments=assessments)
+
+@app.route('/update_profile', methods=['POST'])
+@login_required
+def update_profile():
+    user = User.query.get(session['user_id'])
+    
+    # Get form data
+    username = request.form.get('username')
+    email = request.form.get('email')
+    first_name = request.form.get('first_name')
+    last_name = request.form.get('last_name')
+    avatar_choice = request.form.get('avatar_choice')
+    
+    # Check if username is being changed and already exists
+    if username != user.username and User.query.filter_by(username=username).first():
+        flash('Username already taken.', 'danger')
+        return redirect(url_for('profile'))
+    
+    # Check if email is being changed and already exists
+    if email != user.email and User.query.filter_by(email=email).first():
+        flash('Email already registered.', 'danger')
+        return redirect(url_for('profile'))
+    
+    # Update user information
+    user.username = username
+    user.email = email
+    user.first_name = first_name
+    user.last_name = last_name
+    
+    # Handle profile picture upload
+    if 'profile_picture' in request.files and request.files['profile_picture'].filename:
+        picture_file = request.files['profile_picture']
+        
+        # Generate secure filename
+        filename = secure_filename(picture_file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        new_filename = f"{user.id}_{timestamp}_{filename}"
+        
+        # Ensure upload directory exists
+        upload_folder = os.path.join(app.static_folder, 'uploads', 'profile_pictures')
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Save the file
+        picture_path = os.path.join(upload_folder, new_filename)
+        picture_file.save(picture_path)
+        
+        # Update database with relative path
+        user.profile_picture = f'uploads/profile_pictures/{new_filename}'
+        user.avatar_choice = 0  # Reset avatar choice when uploading custom image
+    
+    # Handle avatar selection
+    elif avatar_choice and int(avatar_choice) > 0:
+        user.avatar_choice = int(avatar_choice)
+        user.profile_picture = None  # Clear custom profile picture when selecting avatar
+    
+    # Save changes to database
+    db.session.commit()
+    
+    # Update session username if changed
+    session['username'] = user.username
+    
+    flash('Profile updated successfully!', 'success')
+    return redirect(url_for('profile'))
+
+# Protected routes
+@app.route('/')
+def index():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Get active medications for the user
+    today = datetime.utcnow().date()
+    
+    # Get user's active medications
+    medications = Medication.query.filter_by(
+        user_id=session['user_id'],
+        active=True
+    ).all()
+    
+    # Get medications already taken today
+    taken_today = MedicationTaken.query.filter_by(
+        user_id=session['user_id'],
+        taken_date=today
+    ).all()
+    
+    taken_med_ids = [record.medication_id for record in taken_today]
+    
+    # Filter out medications that have already been taken today
+    med_reminders = []
+    for med in medications:
+        if med.id not in taken_med_ids:
+            med_reminders.append(med)
+    
+    # Get shared stories for the Stories section
+    shared_stories = Story.query.filter_by(allow_sharing=True).order_by(Story.created_at.desc()).limit(20).all()
+    
+    # Process stories for the template
+    stories_list = []
+    for story in shared_stories:
+        story_data = story.to_dict()
+        # Add user avatar info if available
+        user = User.query.get(story.user_id)
+        if user.profile_picture:
+            story_data['avatar'] = user.profile_picture
+        elif user.avatar_choice > 0:
+            story_data['avatar'] = f'avatars/avatar_{user.avatar_choice}.jpg'
+        else:
+            story_data['avatar'] = 'avatars/avatar_1.jpg'
+        
+        stories_list.append(story_data)
+    
+    # Always add the sample stories to the list
+    sample_stories = [
+        {
+            "id": 0,
+            "content": "After years of unexplained pain, I finally got diagnosed with endometriosis. Finding this community has been a lifesaver. Tracking my symptoms helped my doctor understand my condition better.",
+            "created_at": "2023-04-15",
+            "user_first_name": "Rebecca",
+            "avatar": "avatars/avatar_12.jpg",
+            "allow_sharing": True
+        },
+        {
+            "id": 0,
+            "content": "I struggled with endometriosis for so long before finding proper treatment. This platform helped me connect with specialists who understood my condition and finally got the help I needed.",
+            "created_at": "2023-05-22",
+            "user_first_name": "Michelle",
+            "avatar": "avatars/avatar_15.jpg",
+            "allow_sharing": True
+        },
+        {
+            "id": 0,
+            "content": "The pain tracking feature helped me identify triggers I wasn't aware of. After three months of consistent tracking, I noticed patterns related to certain foods and activities. It's made such a difference!",
+            "created_at": "2023-06-10",
+            "user_first_name": "Jessica",
+            "avatar": "avatars/avatar_8.jpg",
+            "allow_sharing": True
+        }
+    ]
+    
+    # Add all sample stories
+    for sample_story in sample_stories:
+        stories_list.append(sample_story)
+        
+    # Get user testimonials/feedback for What Our Patients Say section
+    testimonials = Feedback.query.filter(
+        Feedback.rating >= 4,  # Only show positive feedback (4-5 stars)
+        Feedback.user_id != None  # Only include feedback with user accounts
+    ).order_by(Feedback.created_at.desc()).limit(8).all()
+    
+    # Process testimonials for the template
+    testimonials_list = []
+    for testimonial in testimonials:
+        testimonial_data = testimonial.to_dict()
+        # Add user avatar info if available
+        if testimonial.user:
+            user = testimonial.user
+            if user.profile_picture:
+                testimonial_data['avatar'] = user.profile_picture
+            elif user.avatar_choice > 0:
+                testimonial_data['avatar'] = f'avatars/avatar_{user.avatar_choice}.jpg'
+            else:
+                testimonial_data['avatar'] = 'avatars/avatar_1.jpg'
+            
+            # Add age if date of birth is available
+            if user.date_of_birth:
+                today = datetime.today()
+                age = today.year - user.date_of_birth.year - ((today.month, today.day) < (user.date_of_birth.month, user.date_of_birth.day))
+                testimonial_data['age'] = age
+            else:
+                testimonial_data['age'] = None
+            
+            testimonials_list.append(testimonial_data)
+    
+    # Only include fixed testimonials if user submitted ones are less than 5
+    if len(testimonials_list) < 5:
+        # Sample testimonials as fallback
+        sample_testimonials = [
+            {
+                "id": 0,
+                "message": "This tool has been a game-changer in managing my endometriosis. The symptom tracking is incredibly detailed!",
+                "user_name": "Sarah M.",
+                "age": 32,
+                "avatar": "avatars/avatar_1.jpg"
+            },
+            {
+                "id": 0,
+                "message": "Finally, a comprehensive platform that understands what we go through. The doctor network is excellent!",
+                "user_name": "Emma R.",
+                "age": 28,
+                "avatar": "avatars/avatar_2.jpg"
+            },
+            {
+                "id": 0,
+                "message": "The daily logbook helps me track patterns I never noticed before. It's made conversations with my doctor much more productive.",
+                "user_name": "Lisa K.",
+                "age": 35,
+                "avatar": "avatars/avatar_3.jpg"
+            },
+            {
+                "id": 0,
+                "message": "The community support and shared stories make me feel less alone. This platform is more than just a tool.",
+                "user_name": "Maria S.",
+                "age": 29,
+                "avatar": "avatars/avatar_4.jpg"
+            },
+            {
+                "id": 0,
+                "message": "Love the medication tracking and reminder features. It's helped me stay consistent with my treatment plan.",
+                "user_name": "Jennifer P.",
+                "age": 31,
+                "avatar": "avatars/avatar_5.jpg"
+            }
+        ]
+        
+        # Add enough sample testimonials to reach at least 5 total
+        for sample in sample_testimonials:
+            if len(testimonials_list) < 5:
+                testimonials_list.append(sample)
+            else:
+                break
+    
+    return render_template('index.html', med_reminders=med_reminders, shared_stories=stories_list, testimonials=testimonials_list)
+
+@app.route('/assessment')
+@login_required
+def assessment():
+    return render_template('assessment.html')
+
+@app.route('/my_record')
+@login_required
+def my_record():
+    # Get user's assessments
+    assessments = Assessment.query.filter_by(
+        user_id=session['user_id']
+    ).order_by(Assessment.assessment_date.desc()).all()
+    
+    # Get user's medications
+    medications = Medication.query.filter_by(
+        user_id=session['user_id'], 
+        active=True
+    ).order_by(Medication.name).all()
+    
+    # Calendar events for FullCalendar
+    calendar_events = []
+    
+    # Calculate daily averages for pain levels and create calendar events
+    daily_pain_data = {}
+    hourly_pain_data = {}
+    
+    for assessment in assessments:
+        date_str = assessment.assessment_date.strftime('%Y-%m-%d')
+        time_str = f"{assessment.assessment_hour:02d}:00:00"
+        datetime_str = f"{date_str}T{time_str}"
+        
+        # Store hourly assessment data for time-specific display
+        hourly_key = f"{date_str}_{assessment.assessment_hour}"
+        hourly_pain_data[hourly_key] = {
+            'id': assessment.id,
+            'pain': assessment.pain_level,
+            'hour': assessment.assessment_hour,
+            'date': date_str,
+            'time': time_str,
+            'datetime': datetime_str
+        }
+        
+        # Build or update daily pain data for averages
+        if date_str not in daily_pain_data:
+            daily_pain_data[date_str] = {
+                'total_pain': assessment.pain_level,
+                'count': 1,
+                'assessments': [assessment.id]
+            }
+        else:
+            daily_pain_data[date_str]['total_pain'] += assessment.pain_level
+            daily_pain_data[date_str]['count'] += 1
+            daily_pain_data[date_str]['assessments'].append(assessment.id)
+    
+    # Create calendar events for daily averages
+    for date_str, data in daily_pain_data.items():
+        avg_pain = data['total_pain'] / data['count']
+        
+        # Determine color based on average pain level
+        if avg_pain <= 3:
+            color = '#28a745'  # green for low pain
+        elif avg_pain <= 6:
+            color = '#ffc107'  # yellow for medium pain
+        else:
+            color = '#dc3545'  # red for high pain
+        
+        calendar_events.append({
+            'title': f'Avg Pain: {avg_pain:.1f}',
+            'start': date_str,
+            'color': color,
+            'assessment_id': data['assessments'][0],  # Use first assessment for viewing
+            'allDay': True,
+            'extendedProps': {
+                'assessment_id': data['assessments'][0],
+                'type': 'average'
+            }
+        })
+    
+    # Add hourly events
+    for key, data in hourly_pain_data.items():
+        # Determine color based on pain level
+        pain = data['pain']
+        if pain <= 3:
+            color = '#28a745'  # green for low pain
+        elif pain <= 6:
+            color = '#ffc107'  # yellow for medium pain
+        else:
+            color = '#dc3545'  # red for high pain
+        
+        # Format time for display in title
+        hour = data['hour']
+        am_pm = 'AM' if hour < 12 else 'PM'
+        display_hour = hour if hour <= 12 else hour - 12
+        if display_hour == 0:
+            display_hour = 12
+        
+        calendar_events.append({
+            'title': f'{display_hour}{am_pm}: Pain {pain}',
+            'start': data['datetime'],
+            'color': color,
+            'assessment_id': data['id'],
+            'allDay': False,
+            'extendedProps': {
+                'assessment_id': data['id'],
+                'type': 'hourly',
+                'hour': hour
+            }
+        })
+    
+    # Prepare data for pain trends chart
+    trends_data = {
+        'labels': [],
+        'values': []
+    }
+    
+    # Sort dates for the chart
+    sorted_dates = sorted(daily_pain_data.keys())
+    for date_str in sorted_dates:
+        data = daily_pain_data[date_str]
+        avg_pain = data['total_pain'] / data['count']
+        trends_data['labels'].append(date_str)
+        trends_data['values'].append(avg_pain)
+    
+    return render_template(
+        'my_record.html',
+        assessments=assessments,
+        medications=medications,
+        calendar_events=json.dumps(calendar_events),
+        trends_data=json.dumps(trends_data)
+    )
+
+def generate_text_description(age, menstrual_irregularity, pain_level, 
+                            hormone_abnormality, infertility, bmi):
+    """Generate a text description from input parameters"""
+    description = f"Patient aged {age}, "
+    description += "has irregular menstrual cycles, " if menstrual_irregularity else "has regular menstrual cycles, "
+    if pain_level >= 8:
+        description += "experiences severe chronic pain, "
+    elif pain_level >= 5:
+        description += "experiences moderate chronic pain, "
+    else:
+        description += "experiences mild chronic pain, "
+    description += "shows hormone level abnormalities, " if hormone_abnormality else "has normal hormone levels, "
+    description += "has fertility issues, " if infertility else "has no reported fertility issues, "
+    description += f"with a BMI of {bmi}"
+    return description
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        # Get form data for LLM enhancement
+        patient_data = request.form.to_dict()
+        
+        # Get numerical inputs with proper error handling
+        try:
+            age = float(request.form.get('age', 30))
+            pain_level = float(request.form.get('pain_level', 5))
+            bmi = float(request.form.get('bmi', 25))
+        except ValueError:
+            return jsonify({'error': 'Invalid numerical input. Please enter valid numbers for age, pain level, and BMI.'}), 400
+        
+        # Get categorical inputs (checkboxes)
+        menstrual_irregularity = 1.0 if request.form.get('menstrual_irregularity') == 'on' else 0.0
+        hormone_abnormality = 1.0 if request.form.get('hormone_abnormality') == 'on' else 0.0
+        infertility = 1.0 if request.form.get('infertility') == 'on' else 0.0
+
+        # Scale numerical features
+        numerical_features = np.array([[age, pain_level, bmi]])
+        scaled_numerical = scaler.transform(numerical_features)
+        
+        # Combine scaled numerical and categorical features
+        tabular_features = np.array([[
+            scaled_numerical[0][0],  # scaled age
+            menstrual_irregularity,
+            scaled_numerical[0][1],  # scaled pain_level
+            hormone_abnormality,
+            infertility,
+            scaled_numerical[0][2]   # scaled bmi
+        ]], dtype=np.float32)
+
+        # Process image if provided
+        image_array = np.zeros((1, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS))
+        if 'image' in request.files and request.files['image'].filename:
+            image_file = request.files['image']
+            image_path = "temp_image.jpg"
+            try:
+                image_file.save(image_path)
+                img = tf.keras.preprocessing.image.load_img(
+                    image_path, target_size=(IMG_WIDTH, IMG_HEIGHT)
+                )
+                image_array = tf.keras.preprocessing.image.img_to_array(img)
+                image_array = image_array / 255.0
+                image_array = np.expand_dims(image_array, axis=0)
+            finally:
+                if os.path.exists(image_path):
+                    os.remove(image_path)
+
+        # Generate and process text
+        text_description = generate_text_description(
+            age, menstrual_irregularity, pain_level,
+            hormone_abnormality, infertility, bmi
+        )
+        text_input = request.form.get('text', '')
+        full_text = f"{text_input} {text_description}"
+        
+        # Process text exactly as in training
+        text_tensor = tf.constant([full_text], dtype=tf.string)
+
+        # Make prediction
+        try:
+            prediction = combined_model([
+                tf.constant(image_array),
+                tf.constant(tabular_features),
+                text_tensor
+            ], training=False)
+            
+            prediction_score = float(prediction[0][0])
+            
+            if prediction_score > 0.8:
+                stage = "Stage III/IV (Severe)"
+            elif prediction_score > 0.6:
+                stage = "Stage II (Moderate)"
+            elif prediction_score > 0.4:
+                stage = "Stage I (Minimal)"
+            else:
+                stage = "No clear indicators of endometriosis"
+
+            # Create initial prediction result
+            prediction_result = {
+                'prediction': {
+                'stage': stage,
+                    'confidence': f"{prediction_score*100:.1f}%"
+                },
+                'image_analysis': {
+                    'processed': True if 'image' in request.files else False,
+                    'score': prediction_score
+                },
+                'educational_information': f"""Based on our analysis:
+- Stage Assessment: {stage}
+- Confidence Level: {prediction_score*100:.1f}%
+- Key Findings: {text_description}
+
+Recommendations:
+1. Consult with a gynecologist to discuss these findings
+2. Continue monitoring your symptoms
+3. Consider keeping a detailed symptom diary
+4. Follow up with additional imaging tests if recommended by your doctor""",
+                'disclaimer': "This analysis is for informational purposes only and should not replace professional medical advice."
+            }
+            
+            # Enhance prediction with LLM if available
+            enhanced_prediction = llm_enhancer.enhance_prediction(patient_data, prediction_result)
+            
+            # Process educational information to remove any asterisks or bullet points if present
+            if enhanced_prediction and 'educational_information' in enhanced_prediction:
+                enhanced_prediction['educational_information'] = enhanced_prediction['educational_information']\
+                    .replace('*', '')\
+                    .replace('- ', '')\
+                    .replace('• ', '')\
+                    .replace('\n- ', '\n')\
+                    .replace('\n• ', '\n')
+            
+            # Save assessment to database if user is logged in
+            if 'user_id' in session:
+                try:
+                    # Generate a comprehensive report
+                    report_content = llm_enhancer.generate_personalized_report(
+                        patient_data=patient_data,
+                        prediction=enhanced_prediction
+                    )
+                    
+                    # Create a new assessment record
+                    user_id = session['user_id']
+                    pain_level = int(float(request.form.get('pain_level', 0)))
+                    pain_location = request.form.get('pain_location', '')
+                    pain_description = request.form.get('symptomDescription', '')
+                    
+                    # Get symptom data
+                    menstrual_irregularity_bool = menstrual_irregularity > 0.5
+                    hormone_abnormality_bool = hormone_abnormality > 0.5
+                    infertility_bool = infertility > 0.5
+                    
+                    # Process other symptoms
+                    other_symptoms = {}
+                    for symptom in ['bloating', 'fatigue', 'nausea', 'headache', 'dizziness', 'mood_swings', 'backpain']:
+                        if request.form.get(symptom) == 'on':
+                            other_symptoms[symptom] = True
+                    
+                    # Create new assessment with report content
+                    new_assessment = Assessment(
+                        user_id=user_id,
+                        assessment_date=datetime.utcnow(),
+                        pain_level=pain_level,
+                        pain_location=pain_location,
+                        pain_description=pain_description,
+                        menstrual_irregularity=menstrual_irregularity_bool,
+                        hormone_abnormality=hormone_abnormality_bool,
+                        infertility=infertility_bool,
+                        symptoms=json.dumps(other_symptoms) if other_symptoms else None,
+                        prediction_result=stage,
+                        confidence_score=prediction_score,
+                        report_content=report_content
+                    )
+                    
+                    db.session.add(new_assessment)
+                    db.session.commit()
+                    
+                    # Add assessment ID to the response
+                    enhanced_prediction['assessment_id'] = new_assessment.id
+                    
+                except Exception as save_error:
+                    print(f"Error saving assessment: {str(save_error)}")
+                    # Continue with analysis even if saving fails
+            
+            return jsonify(enhanced_prediction)
+
+        except Exception as e:
+            print(f"Prediction error: {str(e)}")
+            print(f"Shapes: image={image_array.shape}, "
+                  f"tabular={tabular_features.shape}, "
+                  f"text={text_tensor.shape}")
+            return jsonify({
+                'prediction': {
+                    'stage': 'Error',
+                    'confidence': '0%'
+                },
+                'image_analysis': {
+                    'processed': False,
+                    'score': 0
+                },
+                'educational_information': 'An error occurred during analysis.',
+                'disclaimer': 'Please try again or contact support if the problem persists.'
+            }), 500
+
+    except Exception as e:
+        print(f"Error in /analyze: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/convert-speech', methods=['POST'])
+def convert_speech():
+    try:
+        # Check if audio file is in the request
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+                
+        audio_file = request.files['audio']
+        
+        # Create a temporary file to save the audio
+        with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_file:
+            audio_path = temp_file.name
+            audio_file.save(audio_path)
+            
+            # Check if Groq should be used
+            use_groq = request.form.get('use_groq', 'false').lower() == 'true'
+            
+            try:
+                if use_groq:
+                    # Process with Groq
+                    stt_processor = GroqSTTProcessor()
+                    result = stt_processor.process_audio(audio_path)
+                    return jsonify({
+                        'text': result.get('transcription', ''),
+                        'enhanced': True,
+                        'processor': 'Groq AI'
+                    })
+                else:
+                    # Process with basic STT
+                    stt_processor = STTProcessor()
+                    result = stt_processor.process_audio(audio_path)
+                    return jsonify({
+                        'text': result.get('transcription', ''),
+                        'enhanced': False
+                    })
+            finally:
+                # Clean up the temporary file
+                if os.path.exists(audio_path):
+                    os.unlink(audio_path)
+                
+    except Exception as e:
+        print(f"Error processing audio file: {str(e)}")
+        return jsonify({'error': f"Failed to process audio: {str(e)}"}), 500
+
+@app.route('/download-report', methods=['POST'])
+def download_report():
+    try:
+        patient_data = request.form.to_dict()
+        prediction_data = json.loads(request.form.get('prediction_data', '{}'))
+        
+        # Generate personalized report content using LLM
+        report_content = llm_enhancer.generate_personalized_report(
+            patient_data=patient_data,
+            prediction=prediction_data
+        )
+        
+        # Process the report to remove any asterisks or bullet points
+        if report_content:
+            report_content = report_content\
+                .replace('*', '')\
+                .replace('- ', '')\
+                .replace('• ', '')\
+                .replace('\n- ', '\n')\
+                .replace('\n• ', '\n')
+        
+        # Return the processed report content
+        return jsonify({'report_content': report_content})
+        
+    except Exception as e:
+        print(f"Error generating report: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/download_report/<int:assessment_id>')
+@login_required
+def download_report_by_id(assessment_id):
+    # Get the assessment, ensuring it belongs to the logged-in user
+    assessment = Assessment.query.filter_by(
+        id=assessment_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    # Get user details
+    user = User.query.get(session['user_id'])
+    
+    try:
+        # Get symptoms as a dictionary
+        symptoms_dict = json.loads(assessment.symptoms) if assessment.symptoms else {}
+        
+        # Format symptoms for display
+        symptoms_formatted = ""
+        if symptoms_dict:
+            for key, value in symptoms_dict.items():
+                if key == 'other':
+                    symptoms_formatted += f"Other: {value}\n"
+                else:
+                    symptoms_formatted += f"{key.replace('_', ' ').title()}\n"
+        
+        # Generate prediction text
+        prediction_text = assessment.prediction_result or "Assessment results not available"
+        confidence = ""
+        if assessment.confidence_score:
+            confidence = f"(Confidence: {assessment.confidence_score * 100:.1f}%)"
+        
+        # Process text fields to remove asterisks and bullet points
+        pain_description = ""
+        if assessment.pain_description:
+            pain_description = assessment.pain_description\
+                .replace('*', '')\
+                .replace('- ', '')\
+                .replace('• ', '')\
+                .replace('\n- ', '\n')\
+                .replace('\n• ', '\n')
+                
+        notes = ""
+        if assessment.notes:
+            notes = assessment.notes\
+                .replace('*', '')\
+                .replace('- ', '')\
+                .replace('• ', '')\
+                .replace('\n- ', '\n')\
+                .replace('\n• ', '\n')
+        
+        # Generate a new hospital-style report
+        report_content = f"""
+=======================================================================
+                       ENDOMETRICS HEALTH ASSESSMENT
+=======================================================================
+
+PATIENT INFORMATION:
+-------------------
+Name: {user.first_name} {user.last_name}
+Patient ID: EM-{user.id:04d}
+Date of Birth: {user.date_of_birth.strftime('%B %d, %Y') if user.date_of_birth else 'Not provided'}
+
+ASSESSMENT DETAILS:
+------------------
+Assessment ID: {assessment.id}
+Assessment Date: {assessment.assessment_date.strftime('%B %d, %Y')}
+Assessment Time: {assessment.assessment_hour:02d}:00
+Report Generated: {datetime.now().strftime('%B %d, %Y %H:%M:%S')}
+
+CLINICAL FINDINGS:
+-----------------
+PAIN ASSESSMENT:
+Pain Level: {assessment.pain_level}/10 {' (Severe)' if assessment.pain_level > 7 else ' (Moderate)' if assessment.pain_level > 3 else ' (Mild)'}
+Pain Location: {assessment.pain_location or 'Not specified'}
+
+SYMPTOMS ANALYSIS:
+Menstrual Irregularity: {'Present' if assessment.menstrual_irregularity else 'Not reported'}
+Hormone Abnormality: {'Present' if assessment.hormone_abnormality else 'Not reported'}
+Infertility: {'Present' if assessment.infertility else 'Not reported'}
+
+ADDITIONAL SYMPTOMS:
+{symptoms_formatted or 'No additional symptoms reported.'}
+
+ASSESSMENT NOTES:
+{pain_description or 'No detailed description provided.'}
+
+DIAGNOSTIC IMPRESSION:
+---------------------
+{prediction_text} {confidence}
+
+RECOMMENDATIONS:
+---------------
+1. Follow up with gynecologist to discuss these findings
+2. Continue symptom tracking through the Endometrics application
+3. Consider keeping a detailed symptom diary between appointments
+4. Discuss potential treatment options with your healthcare provider
+
+ADDITIONAL NOTES:
+----------------
+{notes or 'No additional clinical notes.'}
+
+DISCLAIMER:
+----------
+This report is generated based on self-reported symptoms and algorithmic analysis.
+It should not be considered a medical diagnosis or replace professional medical advice.
+Please consult with a qualified healthcare professional for proper diagnosis and treatment.
+
+=======================================================================
+                           END OF REPORT
+=======================================================================
+"""
+        
+        # Update stored report
+        assessment.report_content = report_content
+        db.session.commit()
+        
+        # Create response with the report
+        response = make_response(report_content)
+        response.headers['Content-Disposition'] = f'attachment; filename=Endometrics_Assessment_Report_{assessment_id}.txt'
+        response.headers['Content-Type'] = 'text/plain'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error generating report: {str(e)}")
+        flash('Error generating report. Please try again.', 'danger')
+        return redirect(url_for('assessment_detail', assessment_id=assessment_id))
+
+def create_tables():
+    """Initialize database tables"""
+    with app.app_context():
+        db.create_all()
+        print("Database tables created successfully!")
+        
+# Add a migration function to handle adding the report_content column
+def migrate_add_report_content():
+    """Add report_content column to Assessment table if it doesn't exist"""
+    with app.app_context():
+        try:
+            # Check if column exists by querying it
+            db.session.execute(text("SELECT report_content FROM assessment LIMIT 1"))
+            print("Column report_content already exists")
+        except Exception as e:
+            # If error occurs, add the column
+            db.session.execute(text("ALTER TABLE assessment ADD COLUMN report_content TEXT"))
+            db.session.commit()
+            print("Added report_content column to assessment table")
+
+@app.route('/add_assessment', methods=['GET', 'POST'])
+@login_required
+def add_assessment():
+    if request.method == 'POST':
+        user_id = session['user_id']
+        
+        try:
+            # Get form data
+            pain_level = int(request.form.get('pain_level', 0))
+            pain_location = request.form.get('pain_location', '')
+            pain_description = request.form.get('pain_description', '')
+            
+            # Get symptom checkboxes
+            menstrual_irregularity = 'menstrual_irregularity' in request.form
+            hormone_abnormality = 'hormone_abnormality' in request.form
+            infertility = 'infertility' in request.form
+            
+            # Get other symptoms as JSON
+            other_symptoms = {}
+            if request.form.get('has_bloating') == 'on':
+                other_symptoms['bloating'] = True
+            if request.form.get('has_fatigue') == 'on':
+                other_symptoms['fatigue'] = True
+            if request.form.get('has_nausea') == 'on':
+                other_symptoms['nausea'] = True
+            if request.form.get('has_headache') == 'on':
+                other_symptoms['headache'] = True
+            if request.form.get('other_symptoms'):
+                other_symptoms['other'] = request.form.get('other_symptoms')
+            
+            # Get medications taken
+            medications_taken = []
+            if request.form.getlist('medications'):
+                medications_taken = request.form.getlist('medications')
+            
+            # Notes
+            notes = request.form.get('notes', '')
+            
+            # Get custom assessment date if provided
+            assessment_date = datetime.utcnow()
+            if request.form.get('assessment_date'):
+                try:
+                    assessment_date = datetime.strptime(request.form.get('assessment_date'), '%Y-%m-%d')
+                except ValueError:
+                    # If date parsing fails, use current date
+                    pass
+            
+            # Get hour if provided
+            assessment_hour = 0
+            if request.form.get('assessment_hour'):
+                try:
+                    assessment_hour = int(request.form.get('assessment_hour'))
+                    # Ensure hour is between 0-23
+                    assessment_hour = max(0, min(23, assessment_hour))
+                except ValueError:
+                    # If parsing fails, use 0
+                    assessment_hour = 0
+            
+            # Create new assessment
+            new_assessment = Assessment(
+                user_id=user_id,
+                assessment_date=assessment_date,
+                assessment_hour=assessment_hour,
+                pain_level=pain_level,
+                pain_location=pain_location,
+                pain_description=pain_description,
+                menstrual_irregularity=menstrual_irregularity,
+                hormone_abnormality=hormone_abnormality,
+                infertility=infertility,
+                symptoms=json.dumps(other_symptoms) if other_symptoms else None,
+                medications_taken=json.dumps(medications_taken) if medications_taken else None,
+                notes=notes
+            )
+            
+            db.session.add(new_assessment)
+            db.session.commit()
+            
+            flash('Assessment added successfully!', 'success')
+            return redirect(url_for('my_record'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error adding assessment: {str(e)}")
+            flash('Error adding assessment. Please try again.', 'danger')
+            return redirect(url_for('add_assessment'))
+    
+    # For GET requests, fetch user's medications for the form
+    medications = Medication.query.filter_by(
+        user_id=session['user_id'], 
+        active=True
+    ).order_by(Medication.name).all()
+    
+    # Check if a specific date was provided in the request
+    selected_date = request.args.get('date')
+    if selected_date:
+        try:
+            # Validate the date format
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').strftime('%Y-%m-%d')
+        except ValueError:
+            # If invalid date, don't use it
+            selected_date = None
+    
+    # Check if a specific hour was provided
+    selected_hour = None
+    if request.args.get('hour'):
+        try:
+            selected_hour = int(request.args.get('hour'))
+            # Ensure hour is between 0-23
+            selected_hour = max(0, min(23, selected_hour))
+        except ValueError:
+            selected_hour = None
+    
+    # Get today's date for the date input max attribute
+    today_date = datetime.now().strftime('%Y-%m-%d')
+    
+    return render_template('add_assessment.html', 
+                          medications=medications, 
+                          selected_date=selected_date,
+                          selected_hour=selected_hour,
+                          today_date=today_date)
+
+@app.route('/assessment_detail/<int:assessment_id>')
+@login_required
+def assessment_detail(assessment_id):
+    # Get the assessment, ensuring it belongs to the logged-in user
+    assessment = Assessment.query.filter_by(
+        id=assessment_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    # Parse JSON fields
+    symptoms = json.loads(assessment.symptoms) if assessment.symptoms else {}
+    medications_taken = json.loads(assessment.medications_taken) if assessment.medications_taken else []
+    
+    # Get medication details if medications were taken
+    medications = []
+    if medications_taken:
+        medications = Medication.query.filter(
+            Medication.id.in_(medications_taken),
+            Medication.user_id == session['user_id']
+        ).all()
+    
+    return render_template(
+        'assessment_detail.html',
+        assessment=assessment,
+        symptoms=symptoms,
+        medications=medications
+    )
+
+@app.route('/edit_assessment/<int:assessment_id>', methods=['GET', 'POST'])
+@login_required
+def edit_assessment(assessment_id):
+    # Get the assessment, ensuring it belongs to the logged-in user
+    assessment = Assessment.query.filter_by(
+        id=assessment_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    if request.method == 'POST':
+        try:
+            # Get form data
+            pain_level = int(request.form.get('pain_level', 0))
+            pain_location = request.form.get('pain_location', '')
+            pain_description = request.form.get('pain_description', '')
+            
+            # Get symptom checkboxes
+            assessment.menstrual_irregularity = 'menstrual_irregularity' in request.form
+            assessment.hormone_abnormality = 'hormone_abnormality' in request.form
+            assessment.infertility = 'infertility' in request.form
+            
+            # Get other symptoms as JSON
+            other_symptoms = {}
+            symptom_values = request.form.getlist('symptoms')
+            
+            if 'bloating' in symptom_values:
+                other_symptoms['bloating'] = True
+            if 'fatigue' in symptom_values:
+                other_symptoms['fatigue'] = True
+            if 'nausea' in symptom_values:
+                other_symptoms['nausea'] = True
+            if 'headache' in symptom_values:
+                other_symptoms['headache'] = True
+            if 'dizziness' in symptom_values:
+                other_symptoms['dizziness'] = True
+            if 'backpain' in symptom_values:
+                other_symptoms['backpain'] = True
+            if 'mood_swings' in symptom_values:
+                other_symptoms['mood_swings'] = True
+            if 'constipation' in symptom_values:
+                other_symptoms['constipation'] = True
+                
+            if request.form.get('other_symptoms'):
+                other_symptoms['other'] = request.form.get('other_symptoms')
+            
+            # Get medications taken
+            medications_taken = request.form.getlist('medications_taken')
+            
+            # Notes
+            notes = request.form.get('notes', '')
+            
+            # Update assessment
+            assessment.pain_level = pain_level
+            assessment.pain_location = pain_location
+            assessment.pain_description = pain_description
+            assessment.symptoms = json.dumps(other_symptoms) if other_symptoms else None
+            assessment.medications_taken = json.dumps(medications_taken) if medications_taken else None
+            assessment.notes = notes
+            
+            db.session.commit()
+            
+            flash('Assessment updated successfully!', 'success')
+            return redirect(url_for('assessment_detail', assessment_id=assessment.id))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating assessment: {str(e)}")
+            flash('Error updating assessment. Please try again.', 'danger')
+            return redirect(url_for('edit_assessment', assessment_id=assessment.id))
+    
+    # For GET requests
+    # Parse JSON fields
+    symptoms = json.loads(assessment.symptoms) if assessment.symptoms else {}
+    med_ids = json.loads(assessment.medications_taken) if assessment.medications_taken else []
+    
+    # Get all active medications for the user
+    active_medications = Medication.query.filter_by(
+        user_id=session['user_id'], 
+        active=True
+    ).order_by(Medication.name).all()
+    
+    return render_template(
+        'edit_assessment.html',
+        assessment=assessment,
+        symptoms=symptoms,
+        med_ids=med_ids,
+        active_medications=active_medications
+    )
+
+@app.route('/delete_assessment/<int:assessment_id>', methods=['GET'])
+@login_required
+def delete_assessment(assessment_id):
+    # Get the assessment, ensuring it belongs to the logged-in user
+    assessment = Assessment.query.filter_by(
+        id=assessment_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    try:
+        # Delete the assessment
+        db.session.delete(assessment)
+        db.session.commit()
+        flash('Assessment has been deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting assessment: {str(e)}")
+        flash('Error deleting assessment. Please try again.', 'danger')
+    
+    # Get the referer to determine where to redirect back to
+    referer = request.headers.get('Referer', '')
+    
+    # Check if the request came from the profile page
+    if '/profile' in referer:
+        return redirect(url_for('profile'))
+    else:
+        return redirect(url_for('my_record'))
+
+@app.route('/add_medication', methods=['GET', 'POST'])
+@login_required
+def add_medication():
+    if request.method == 'POST':
+        user_id = session['user_id']
+        
+        try:
+            # Get form data
+            name = request.form.get('name')
+            dosage = request.form.get('dosage')
+            frequency = request.form.get('frequency')
+            
+            # Parse dates
+            start_date = None
+            if request.form.get('start_date'):
+                start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+                
+            end_date = None
+            if request.form.get('end_date'):
+                end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+            
+            notes = request.form.get('notes', '')
+            
+            # Validate required fields
+            if not name:
+                flash('Medication name is required.', 'danger')
+                return redirect(url_for('add_medication'))
+            
+            # Create new medication
+            new_medication = Medication(
+                user_id=user_id,
+                name=name,
+                dosage=dosage,
+                frequency=frequency,
+                start_date=start_date,
+                end_date=end_date,
+                notes=notes
+            )
+            
+            db.session.add(new_medication)
+            db.session.commit()
+            
+            flash('Medication added successfully!', 'success')
+            return redirect(url_for('my_record'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error adding medication: {str(e)}")
+            flash('Error adding medication. Please try again.', 'danger')
+            return redirect(url_for('add_medication'))
+    
+    return render_template('add_medication.html')
+
+@app.route('/update_medication/<int:medication_id>', methods=['POST'])
+@login_required
+def update_medication(medication_id):
+    medication = Medication.query.filter_by(
+        id=medication_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    action = request.form.get('action')
+    
+    if action == 'deactivate':
+        medication.active = False
+        db.session.commit()
+        flash('Medication marked as inactive.', 'success')
+    elif action == 'activate':
+        medication.active = True
+        db.session.commit()
+        flash('Medication marked as active.', 'success')
+    
+    return redirect(url_for('my_record'))
+
+@app.route('/edit_medication/<int:medication_id>', methods=['POST'])
+@login_required
+def edit_medication(medication_id):
+    # Get the medication, ensuring it belongs to the logged-in user
+    medication = Medication.query.filter_by(
+        id=medication_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    try:
+        # Update medication
+        medication.name = request.form.get('name')
+        medication.dosage = request.form.get('dosage')
+        medication.frequency = request.form.get('frequency')
+        medication.notes = request.form.get('notes')
+        
+        db.session.commit()
+        flash('Medication updated successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating medication: {str(e)}")
+        flash('Error updating medication. Please try again.', 'danger')
+    
+    return redirect(url_for('my_record'))
+
+@app.route('/delete_medication/<int:medication_id>', methods=['POST'])
+@login_required
+def delete_medication(medication_id):
+    # Get the medication, ensuring it belongs to the logged-in user
+    medication = Medication.query.filter_by(
+        id=medication_id, 
+        user_id=session['user_id']
+    ).first_or_404()
+    
+    try:
+        # Delete the medication
+        db.session.delete(medication)
+        db.session.commit()
+        flash('Medication has been deleted.', 'medication-success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting medication: {str(e)}")
+        flash('Error deleting medication. Please try again.', 'medication-error')
+    
+    return redirect(url_for('my_record'))
+
+@app.route('/get_medication_reminders')
+@login_required
+def get_medication_reminders():
+    today = datetime.utcnow().date()
+    
+    # Get user's active medications
+    medications = Medication.query.filter_by(
+        user_id=session['user_id'],
+        active=True
+    ).all()
+    
+    # Get medications already taken today
+    taken_today = MedicationTaken.query.filter_by(
+        user_id=session['user_id'],
+        taken_date=today
+    ).all()
+    
+    taken_med_ids = [record.medication_id for record in taken_today]
+    
+    # Filter out medications that have already been taken today
+    reminders = []
+    for med in medications:
+        if med.id not in taken_med_ids:
+            reminders.append({
+                'id': med.id,
+                'name': med.name,
+                'dosage': med.dosage,
+                'frequency': med.frequency
+            })
+    
+    return jsonify(reminders)
+
+@app.route('/mark_medication_taken', methods=['POST'])
+@login_required
+def mark_medication_taken():
+    medication_id = request.form.get('medication_id')
+    
+    if not medication_id:
+        return jsonify({'success': False, 'message': 'Medication ID is required'}), 400
+    
+    # Verify the medication belongs to the user
+    medication = Medication.query.filter_by(
+        id=medication_id,
+        user_id=session['user_id']
+    ).first()
+    
+    if not medication:
+        return jsonify({'success': False, 'message': 'Medication not found'}), 404
+    
+    today = datetime.utcnow().date()
+    
+    # Check if medication was already taken today
+    existing_record = MedicationTaken.query.filter_by(
+        user_id=session['user_id'],
+        medication_id=medication_id,
+        taken_date=today
+    ).first()
+    
+    if existing_record:
+        return jsonify({'success': True, 'message': 'Medication was already marked as taken today'})
+    
+    # Create new record
+    new_record = MedicationTaken(
+        user_id=session['user_id'],
+        medication_id=medication_id,
+        taken_date=today
+    )
+    
+    try:
+        db.session.add(new_record)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Medication marked as taken'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error marking medication as taken: {str(e)}")
+        return jsonify({'success': False, 'message': 'Error recording medication intake'}), 500
+
+@app.route('/get_user_stories')
+@login_required
+def get_user_stories():
+    # Get all stories for the current user
+    user_stories = Story.query.filter_by(user_id=session['user_id']).order_by(Story.created_at.desc()).all()
+    
+    stories_list = []
+    for story in user_stories:
+        story_data = story.to_dict()
+        # Add user avatar info
+        user = User.query.get(story.user_id)
+        if user.profile_picture:
+            story_data['avatar'] = user.profile_picture
+        elif user.avatar_choice > 0:
+            story_data['avatar'] = f'avatars/avatar_{user.avatar_choice}.jpg'
+        else:
+            story_data['avatar'] = 'avatars/avatar_1.jpg'
+        
+        stories_list.append(story_data)
+    
+    return jsonify(stories_list)
+
+# Story-related routes
+@app.route('/submit_story', methods=['POST'])
+@login_required
+def submit_story():
+    try:
+        content = request.form.get('story_content')
+        allow_sharing = 'share_story' in request.form
+        
+        if not content or content.strip() == '':
+            flash('Please enter your story before submitting.', 'warning')
+            return redirect(url_for('index'))
+        
+        # Create new story
+        new_story = Story(
+            user_id=session['user_id'],
+            content=content,
+            allow_sharing=allow_sharing
+        )
+        
+        db.session.add(new_story)
+        db.session.commit()
+        
+        flash('Your story has been submitted successfully. Thank you for sharing!', 'success')
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error submitting story: {str(e)}")
+        flash('An error occurred while submitting your story. Please try again.', 'danger')
+        return redirect(url_for('index'))
+
+@app.route('/get_shared_stories')
+def get_shared_stories():
+    # Get all stories that are allowed to be shared
+    shared_stories = Story.query.filter_by(allow_sharing=True).order_by(Story.created_at.desc()).limit(10).all()
+    
+    stories_list = []
+    for story in shared_stories:
+        story_data = story.to_dict()
+        # Add user avatar info if available
+        user = User.query.get(story.user_id)
+        if user.profile_picture:
+            story_data['avatar'] = user.profile_picture
+        elif user.avatar_choice > 0:
+            story_data['avatar'] = f'avatars/avatar_{user.avatar_choice}.jpg'
+        else:
+            story_data['avatar'] = 'avatars/avatar_1.jpg'
+        
+        stories_list.append(story_data)
+    
+    return jsonify(stories_list)
+
+@app.route('/edit_story/<int:story_id>', methods=['POST'])
+@login_required
+def edit_story(story_id):
+    try:
+        # Get the story, ensuring it belongs to the logged-in user
+        story = Story.query.filter_by(
+            id=story_id, 
+            user_id=session['user_id']
+        ).first_or_404()
+        
+        # Update story content
+        story.content = request.form.get('story_content')
+        story.allow_sharing = 'allow_sharing' in request.form
+        
+        db.session.commit()
+        flash('Your story has been updated successfully!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating story: {str(e)}")
+        flash('An error occurred while updating your story. Please try again.', 'danger')
+    
+    return redirect(url_for('profile'))
+
+@app.route('/delete_story/<int:story_id>', methods=['POST'])
+@login_required
+def delete_story(story_id):
+    try:
+        # Get the story, ensuring it belongs to the logged-in user
+        story = Story.query.filter_by(
+            id=story_id, 
+            user_id=session['user_id']
+        ).first_or_404()
+        
+        db.session.delete(story)
+        db.session.commit()
+        flash('Your story has been deleted successfully.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting story: {str(e)}")
+        flash('An error occurred while deleting your story. Please try again.', 'danger')
+    
+    return redirect(url_for('profile'))
+
+# Feedback routes
+@app.route('/feedback')
+def feedback():
+    """Render the feedback form page"""
+    # Redirect to login if not authenticated
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    # Get categories for the dropdown
+    categories = [
+        'General Feedback', 
+        'User Interface', 
+        'Feature Request', 
+        'Bug Report', 
+        'Accessibility Issue',
+        'Content & Resources',
+        'Medical Information',
+        'Community & Support'
+    ]
+    
+    # Check if user is logged in
+    user = None
+    if 'user_id' in session:
+        user = User.query.get(session['user_id'])
+    
+    return render_template('feedback.html', categories=categories, user=user)
+
+@app.route('/submit_feedback', methods=['POST'])
+def submit_feedback():
+    """Handle feedback form submission"""
+    try:
+        # Get form data
+        category = request.form.get('category')
+        subject = request.form.get('subject')
+        message = request.form.get('message')
+        rating = request.form.get('rating')
+        
+        # Convert rating to integer if provided
+        rating_value = int(rating) if rating and rating.isdigit() else None
+        
+        # Check if user is logged in
+        user_id = session.get('user_id')
+        
+        # Basic validation
+        if not category or not subject or not message:
+            flash('Please fill out all required fields.', 'warning')
+            return redirect(url_for('feedback'))
+        
+        # Create new feedback entry
+        new_feedback = Feedback(
+            user_id=user_id,
+            category=category,
+            subject=subject,
+            message=message,
+            rating=rating_value
+        )
+        
+        db.session.add(new_feedback)
+        db.session.commit()
+        
+        flash('Thank you for your feedback! We appreciate your input.', 'success')
+        return redirect(url_for('feedback'))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error submitting feedback: {str(e)}")
+        flash('An error occurred while submitting your feedback. Please try again.', 'danger')
+        return redirect(url_for('feedback'))
+
+@app.route('/my_feedback')
+@login_required
+def my_feedback():
+    """View user's own feedback submissions"""
+    user_feedback = Feedback.query.filter_by(user_id=session['user_id']).order_by(Feedback.created_at.desc()).all()
+    return render_template('my_feedback.html', feedback_list=user_feedback)
+
+@app.route('/edit_feedback/<int:feedback_id>', methods=['POST'])
+@login_required
+def edit_feedback(feedback_id):
+    """Edit existing feedback"""
+    try:
+        # Get the feedback, ensuring it belongs to the logged-in user
+        feedback = Feedback.query.filter_by(
+            id=feedback_id, 
+            user_id=session['user_id']
+        ).first_or_404()
+        
+        # Update feedback
+        feedback.category = request.form.get('category')
+        feedback.subject = request.form.get('subject')
+        feedback.message = request.form.get('message')
+        rating = request.form.get('rating')
+        feedback.rating = int(rating) if rating and rating.isdigit() else None
+        
+        db.session.commit()
+        flash('Your feedback has been updated successfully!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating feedback: {str(e)}")
+        flash('An error occurred while updating your feedback. Please try again.', 'danger')
+    
+    return redirect(url_for('my_feedback'))
+
+@app.route('/delete_feedback/<int:feedback_id>', methods=['POST'])
+@login_required
+def delete_feedback(feedback_id):
+    """Delete feedback"""
+    try:
+        # Get the feedback, ensuring it belongs to the logged-in user
+        feedback = Feedback.query.filter_by(
+            id=feedback_id, 
+            user_id=session['user_id']
+        ).first_or_404()
+        
+        db.session.delete(feedback)
+        db.session.commit()
+        flash('Your feedback has been deleted successfully.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting feedback: {str(e)}")
+        flash('An error occurred while deleting your feedback. Please try again.', 'danger')
+    
+    return redirect(url_for('my_feedback'))
+
+@app.route('/prescription', methods=['GET', 'POST'])
+@login_required
+def prescription():
+    """Handle prescription uploads and analysis"""
+    prescription_results = None
+    
+    if request.method == 'POST':
+        if 'prescription_image' not in request.files:
+            flash('No prescription image uploaded', 'warning')
+            return redirect(request.url)
+            
+        prescription_file = request.files['prescription_image']
+        
+        if prescription_file.filename == '':
+            flash('No prescription image selected', 'warning')
+            return redirect(request.url)
+            
+        if prescription_file:
+            try:
+                # Create a temporary file path
+                temp_path = os.path.join(tempfile.gettempdir(), secure_filename(prescription_file.filename))
+                prescription_file.save(temp_path)
+                
+                # Save a copy in static uploads for display
+                upload_folder = os.path.join(app.static_folder, 'uploads', 'prescriptions')
+                os.makedirs(upload_folder, exist_ok=True)
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                filename = f"prescription_{session['user_id']}_{timestamp}.jpg"
+                saved_path = os.path.join(upload_folder, filename)
+                shutil.copy(temp_path, saved_path)
+                
+                # Get image as base64 for API
+                with open(temp_path, "rb") as image_file:
+                    base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                
+                # Call Groq API for prescription analysis
+                groq_api_key = os.environ.get('GROQ_API_KEY')
+                
+                if not groq_api_key:
+                    flash('API key not available. Using sample data for demonstration.', 'warning')
+                    # Set session variable to indicate sample data
+                    session['using_sample_data'] = True
+                    # Sample prescription analysis results
+                    prescription_results = {
+                        'medicines': [
+                            {
+                                'name': 'Naproxen 500mg',
+                                'dosage': '1 tablet twice daily',
+                                'purpose': 'Anti-inflammatory for pain relief',
+                                'link': 'https://pharmeasy.in/search/all?name=naproxen'
+                            },
+                            {
+                                'name': 'Letrozole 2.5mg',
+                                'dosage': '1 tablet daily',
+                                'purpose': 'Hormonal therapy for endometriosis',
+                                'link': 'https://pharmeasy.in/search/all?name=letrozole'
+                            },
+                            {
+                                'name': 'Calcium + Vitamin D3',
+                                'dosage': '1 tablet daily',
+                                'purpose': 'Supplement for bone health',
+                                'link': 'https://pharmeasy.in/search/all?name=calcium%20vitamin%20d3'
+                            }
+                        ],
+                        'recommendations': 'Take medications with food. Avoid alcohol while on these medications.',
+                        'image_path': f'/static/uploads/prescriptions/{filename}'
+                    }
+                else:
+                    # Use Groq API to analyze prescription
+                    headers = {
+                        "Authorization": f"Bearer {groq_api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    # Remove sample data flag if it exists
+                    session.pop('using_sample_data', None)
+                    
+                    # Construct API payload with image
+                    payload = {
+                        "messages": [
+                            {
+                                "role": "system", 
+                                "content": "You are a medical prescription analyzer. Your task is to accurately identify medications, dosages, and usage instructions from prescription images. Return JSON format results."
+                            },
+                            {
+                                "role": "user",
+                                "content": "Generate a sample prescription analysis for endometriosis treatment. Include common medications, dosages, and purposes. Format the response as structured JSON with 'medicines' array (each having name, dosage, purpose, link fields) and a 'recommendations' field."
+                            }
+                        ],
+                        "model": "llama3-70b-8192",
+                        "max_tokens": 1024,
+                        "temperature": 0.2
+                    }
+                    
+                    response = requests.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        timeout=30
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        content = result["choices"][0]["message"]["content"]
+                        
+                        # Parse JSON from response
+                        try:
+                            # Extract JSON part from response if necessary
+                            json_str = content
+                            if "```json" in content:
+                                json_str = content.split("```json")[1].split("```")[0]
+                            elif "```" in content:
+                                json_str = content.split("```")[1].split("```")[0]
+                                
+                            prescription_data = json.loads(json_str)
+                            
+                            # Ensure all medicines have PharmEasy links
+                            for med in prescription_data.get('medicines', []):
+                                if 'link' not in med or not med['link']:
+                                    med_name = med.get('name', '').replace(' ', '%20')
+                                    med['link'] = f'https://pharmeasy.in/search/all?name={med_name}'
+                            
+                            prescription_results = prescription_data
+                            prescription_results['image_path'] = f'/static/uploads/prescriptions/{filename}'
+                        except (json.JSONDecodeError, KeyError) as e:
+                            flash(f'Error parsing prescription results: {str(e)}', 'danger')
+                            prescription_results = {
+                                'error': 'Could not parse prescription data',
+                                'raw_response': content,
+                                'image_path': f'/static/uploads/prescriptions/{filename}'
+                            }
+                    else:
+                        error_message = f'API Error: {response.status_code}'
+                        try:
+                            error_details = response.json()
+                            print(f"Groq API error: {error_details}")
+                            error_message += f" - {error_details.get('error', {}).get('message', '')}"
+                        except:
+                            print(f"Groq API error: Status {response.status_code}, Response: {response.text}")
+                        
+                        flash(error_message + " Showing sample data instead.", 'warning')
+                        # Set sample data flag
+                        session['using_sample_data'] = True
+                        # Use sample data as fallback
+                        prescription_results = {
+                            'medicines': [
+                                {
+                                    'name': 'Naproxen 500mg',
+                                    'dosage': '1 tablet twice daily',
+                                    'purpose': 'Anti-inflammatory for pain relief',
+                                    'link': 'https://pharmeasy.in/search/all?name=naproxen'
+                                },
+                                {
+                                    'name': 'Letrozole 2.5mg',
+                                    'dosage': '1 tablet daily',
+                                    'purpose': 'Hormonal therapy for endometriosis',
+                                    'link': 'https://pharmeasy.in/search/all?name=letrozole'
+                                },
+                                {
+                                    'name': 'Calcium + Vitamin D3',
+                                    'dosage': '1 tablet daily',
+                                    'purpose': 'Supplement for bone health',
+                                    'link': 'https://pharmeasy.in/search/all?name=calcium%20vitamin%20d3'
+                                }
+                            ],
+                            'recommendations': 'Take medications with food. Avoid alcohol while on these medications.',
+                            'image_path': f'/static/uploads/prescriptions/{filename}',
+                            'error_info': error_message  # Keep the error info for debugging
+                        }
+                
+                # Clean up temp file
+                os.remove(temp_path)
+                
+            except Exception as e:
+                flash(f'Error processing prescription: {str(e)}', 'danger')
+                print(f"Prescription analysis error: {traceback.format_exc()}")
+    
+    return render_template('prescription.html', results=prescription_results)
+
+@app.route('/save_prescription_medicine', methods=['POST'])
+@login_required
+def save_prescription_medicine():
+    """Save a medicine from prescription analysis to user's medication list"""
+    user_id = session['user_id']
+    
+    try:
+        # Get form data
+        name = request.form.get('name')
+        dosage = request.form.get('dosage', '')
+        notes = request.form.get('notes', '')
+        
+        # Get frequency from form
+        frequency = request.form.get('frequency', 'As prescribed')
+        
+        # Get today's date for start date
+        start_date = datetime.utcnow().date()
+        
+        # Validate required fields
+        if not name:
+            flash('Medication name is required.', 'danger')
+            return redirect(url_for('prescription'))
+        
+        # Create new medication
+        new_medication = Medication(
+            user_id=user_id,
+            name=name,
+            dosage=dosage,
+            frequency=frequency,
+            start_date=start_date,
+            notes=notes
+        )
+        
+        db.session.add(new_medication)
+        db.session.commit()
+        
+        flash(f'Medication "{name}" saved to your records! <a href="{url_for("my_record")}">View in My Records</a>', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding medication from prescription: {str(e)}")
+        flash('Error saving medication. Please try again.', 'danger')
+    
+    return redirect(url_for('prescription'))
+
+# Endometriosis myths and facts for the myth buster
+ENDOMETRIOSIS_MYTHS = [
+    {
+        "myth": "Endometriosis pain is just normal period pain.",
+        "fact": "Endometriosis pain is often severe and can affect daily life. It's different from typical menstrual cramps and should be taken seriously."
+    },
+    {
+        "myth": "Getting pregnant cures endometriosis.",
+        "fact": "Pregnancy may temporarily suppress symptoms, but it is not a cure. Symptoms often return after pregnancy or breastfeeding ends."
+    },
+    {
+        "myth": "Endometriosis only affects older women.",
+        "fact": "Endometriosis can affect people of any age who menstruate, including teenagers and young adults."
+    },
+    {
+        "myth": "Hysterectomy is the only effective treatment for endometriosis.",
+        "fact": "While hysterectomy may help some patients, it's not a guaranteed cure. There are many other treatment options including medication, hormone therapy, and minimally invasive surgeries."
+    },
+    {
+        "myth": "Endometriosis is rare.",
+        "fact": "Endometriosis affects approximately 1 in 10 women of reproductive age worldwide, making it one of the most common gynecological conditions."
+    },
+    {
+        "myth": "If you have painful periods, you definitely have endometriosis.",
+        "fact": "While painful periods can be a symptom of endometriosis, they can also be caused by other conditions. Proper diagnosis requires medical evaluation and often laparoscopic surgery."
+    },
+    {
+        "myth": "You can't get pregnant if you have endometriosis.",
+        "fact": "While endometriosis can cause fertility issues in some patients, many people with endometriosis can and do conceive naturally."
+    },
+    {
+        "myth": "Endometriosis always causes obvious symptoms.",
+        "fact": "Some people with endometriosis have few or no symptoms, while others experience severe pain. The severity of symptoms doesn't always correlate with the extent of the disease."
+    }
+]
+
+@app.route('/api/myth', methods=['GET'])
+def get_random_myth():
+    """Return a random endometriosis myth and fact pair"""
+    try:
+        # Use Groq API if GROQ_API_KEY is available
+        groq_api_key = os.environ.get('GROQ_API_KEY')
+        
+        if groq_api_key:
+            headers = {
+                "Authorization": f"Bearer {groq_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "messages": [{
+                    "role": "user", 
+                    "content": "Generate a random myth about endometriosis and the corresponding fact that debunks it. Return only a JSON object with 'myth' and 'fact' fields."
+                }],
+                "model": "llama3-70b-8192"
+            }
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                try:
+                    # Extract JSON from the response
+                    content = result["choices"][0]["message"]["content"]
+                    # Try to parse JSON directly from content
+                    data = json.loads(content)
+                    if "myth" in data and "fact" in data:
+                        return jsonify(data)
+                except (json.JSONDecodeError, KeyError) as e:
+                    # If parsing fails, fall back to pre-defined myths
+                    pass
+        
+        # Fall back to pre-defined myths
+        random_myth = random.choice(ENDOMETRIOSIS_MYTHS)
+        return jsonify(random_myth)
+        
+    except Exception as e:
+        # Return a default myth if anything goes wrong
+        return jsonify(ENDOMETRIOSIS_MYTHS[0])
+
+# Catch-all route to redirect undefined routes to login
+@app.route('/<path:undefined_route>')
+def catch_all(undefined_route):
+    """Catch any undefined routes and redirect to login if not authenticated"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    # If authenticated, redirect to home page
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    with app.app_context():
+        create_tables()
+    print("\n=======================================================")
+    print("  EndoMetrics application started successfully!")
+    print("  Login page: http://localhost:5000/login")
+    print("=======================================================\n")
+    try:
+        migrate_add_report_content()
+    except Exception as e:
+        print(f"Migration error: {str(e)}")
+    app.run(host='0.0.0.0', port=5000, debug=True)

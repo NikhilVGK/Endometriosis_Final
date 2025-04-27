@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Feedback - Endometrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/my_feedback.css') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heartbeat me-2"></i>
+                Endometrics
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment">Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/my_record">My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/feedback">Feedback</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            {{ session.username }}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                            <li><a class="dropdown-item active" href="/my_feedback">My Feedback</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1>My Feedback History</h1>
+            <p>Review the feedback you've shared with us. We value your input and are continuously working to improve based on your suggestions.</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="feedback-container">
+            {% if feedback_list %}
+                <form id="bulkDeleteFeedbackForm">
+                    <div class="mb-3 text-end">
+                        <button type="button" id="deleteSelectedFeedbackBtn" class="btn btn-danger">
+                            <i class="fas fa-trash-alt me-1"></i> Delete Selected
+                        </button>
+                    </div>
+                    <!-- Feedback List -->
+                    {% for feedback in feedback_list %}
+                    <div class="feedback-card">
+                        <div class="feedback-card-checkbox">
+                             <input type="checkbox" class="form-check-input" name="feedback_ids" value="{{ feedback.id }}">
+                        </div>
+                        <div class="feedback-content">
+                            <div class="feedback-header">
+                                <h3 class="feedback-title">{{ feedback.subject }}</h3>
+                                <span class="feedback-category">{{ feedback.category }}</span>
+                            </div>
+                            <div class="feedback-body">
+                                <div class="feedback-message">
+                                    {{ feedback.message }}
+                                </div>
+                                <div class="feedback-meta">
+                                    <div class="feedback-date">
+                                        <i class="far fa-calendar-alt"></i>
+                                        {{ feedback.created_at }}
+                                    </div>
+                                    
+                                    {% if feedback.rating %}
+                                    <div class="feedback-rating">
+                                        Rating:
+                                        <div class="star-rating">
+                                            {% for i in range(feedback.rating) %}
+                                                <i class="fas fa-star"></i>
+                                            {% endfor %}
+                                            {% for i in range(5 - feedback.rating) %}
+                                                <i class="far fa-star"></i>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="feedback-status status-{{ feedback.status.lower() }}">
+                                        {{ feedback.status }}
+                                    </div>
+                                </div>
+                                
+                                <!-- Edit and Delete Buttons -->
+                                <div class="d-flex justify-content-end mt-3">
+                                    <button class="btn btn-sm btn-outline-primary me-2 edit-feedback-btn" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#editFeedbackModal" 
+                                            data-feedback-id="{{ feedback.id }}"
+                                            data-category="{{ feedback.category }}"
+                                            data-subject="{{ feedback.subject }}"
+                                            data-message="{{ feedback.message }}"
+                                            data-rating="{{ feedback.rating }}">
+                                        <i class="fas fa-edit me-1"></i> Edit
+                                    </button>
+                                    
+                                    <form action="/delete_feedback/{{ feedback.id }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this feedback? This action cannot be undone.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash me-1"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </form>
+            {% else %}
+                <!-- Empty State -->
+                <div class="empty-feedback">
+                    <i class="far fa-comment-dots"></i>
+                    <h3>No Feedback Yet</h3>
+                    <p>You haven't submitted any feedback yet. We'd love to hear your thoughts about Endometrics!</p>
+                    <a href="/feedback" class="btn btn-primary mt-3">
+                        <i class="fas fa-paper-plane me-2"></i>Share Your Feedback
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Edit Feedback Modal -->
+    <div class="modal fade" id="editFeedbackModal" tabindex="-1" aria-labelledby="editFeedbackModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editFeedbackModalLabel">Edit Feedback</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editFeedbackForm" method="POST">
+                        <div class="mb-3">
+                            <label for="edit_category" class="form-label">Category</label>
+                            <select class="form-select" id="edit_category" name="category" required>
+                                <option value="General Feedback">General Feedback</option>
+                                <option value="User Interface">User Interface</option>
+                                <option value="Feature Request">Feature Request</option>
+                                <option value="Bug Report">Bug Report</option>
+                                <option value="Accessibility Issue">Accessibility Issue</option>
+                                <option value="Content & Resources">Content & Resources</option>
+                                <option value="Medical Information">Medical Information</option>
+                                <option value="Community & Support">Community & Support</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_subject" class="form-label">Subject</label>
+                            <input type="text" class="form-control" id="edit_subject" name="subject" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Your Experience Rating</label>
+                            <div class="rating-stars">
+                                <input type="radio" id="edit_star1" name="rating" value="1">
+                                <label for="edit_star1" class="fas fa-star"></label>
+                                <input type="radio" id="edit_star2" name="rating" value="2">
+                                <label for="edit_star2" class="fas fa-star"></label>
+                                <input type="radio" id="edit_star3" name="rating" value="3">
+                                <label for="edit_star3" class="fas fa-star"></label>
+                                <input type="radio" id="edit_star4" name="rating" value="4">
+                                <label for="edit_star4" class="fas fa-star"></label>
+                                <input type="radio" id="edit_star5" name="rating" value="5">
+                                <label for="edit_star5" class="fas fa-star"></label>
+                            </div>
+                            <div class="rating-text" id="edit_rating_text"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_message" class="form-label">Your Feedback</label>
+                            <textarea class="form-control" id="edit_message" name="message" rows="4" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveEditBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light text-center text-lg-start mt-5 pt-4">
+        <div class="container p-4">
+            <div class="row">
+                <div class="col-lg-4 col-md-12 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Endometrics</h5>
+                    <p>
+                        Empowering women through technology and awareness. Track, analyze, and manage endometriosis with confidence.
+                    </p>
+                </div>
+
+                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Links</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><a href="/" class="text-dark">Home</a></li>
+                        <li><a href="/assessment" class="text-dark">Assessment</a></li>
+                        <li><a href="/my_record" class="text-dark">My Record</a></li>
+                        <li><a href="/feedback" class="text-dark">Feedback</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-lg-4 col-md-6 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Contact</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li><a href="#!" class="text-dark">Email Us</a></li>
+                        <li><a href="#!" class="text-dark">Support</a></li>
+                        <li><a href="#!" class="text-dark">FAQ</a></li>
+                        <li><a href="#!" class="text-dark">Privacy Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.05);">
+            © 2023 Endometrics. All rights reserved.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="{{ url_for('static', filename='my_feedback.js') }}"></script>
+
+    <!-- Add script for bulk delete -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteSelectedBtn = document.getElementById('deleteSelectedFeedbackBtn');
+            const form = document.getElementById('bulkDeleteFeedbackForm');
+            
+            if (deleteSelectedBtn && form) {
+                deleteSelectedBtn.addEventListener('click', function() {
+                    const checkedBoxes = form.querySelectorAll('input[name="feedback_ids"]:checked');
+                    const feedbackIds = Array.from(checkedBoxes).map(cb => cb.value);
+                    
+                    if (feedbackIds.length === 0) {
+                        alert('Please select at least one feedback item to delete.');
+                        return;
+                    }
+                    
+                    if (confirm(`Are you sure you want to delete ${feedbackIds.length} selected feedback item(s)? This action cannot be undone.`)) {
+                        // Send AJAX request to backend
+                        fetch('/delete_selected_feedback', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                // Add CSRF token header if needed
+                            },
+                            body: JSON.stringify({ feedback_ids: feedbackIds })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Selected feedback deleted successfully.');
+                                window.location.reload(); // Reload page to show changes
+                            } else {
+                                alert('Error deleting feedback: ' + (data.message || 'Please try again.'));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred while deleting feedback.');
+                        });
+                    }
+                });
+            }
+            
+            // Existing script for edit modal...
+            const editFeedbackModal = document.getElementById('editFeedbackModal');
+            const editFeedbackForm = document.getElementById('editFeedbackForm');
+            const saveEditBtn = document.getElementById('saveEditBtn');
+            
+            // Star rating functionality for edit modal
+            const editRatingInputs = editFeedbackModal.querySelectorAll('input[name="rating"]');
+            const editRatingText = document.getElementById('edit_rating_text');
+            const ratingLabels = ['Very Poor', 'Poor', 'Average', 'Good', 'Excellent'];
+            const editRatingStars = editFeedbackModal.querySelectorAll('.rating-stars label');
+            
+            // Add necessary CSS for stars
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
+                .rating-stars {
+                    display: flex;
+                    margin-top: 10px;
+                }
+                .rating-stars input {
+                    display: none;
+                }
+                .rating-stars label {
+                    font-size: 30px;
+                    color: #ddd;
+                    padding: 0 5px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .rating-stars label.active,
+                .rating-stars label.hovered {
+                    color: #ffd700;
+                }
+                .rating-text {
+                    margin-top: 10px;
+                    font-weight: 500;
+                    color: #666;
+                }
+            `;
+            document.head.appendChild(styleElement);
+            
+            // Function to update stars display
+            function updateStars(selectedValue) {
+                // Clear all stars
+                editRatingStars.forEach(star => {
+                    star.classList.remove('active');
+                });
+                
+                // Fill stars up to the selected value
+                if (selectedValue > 0) {
+                    for (let i = 0; i < selectedValue; i++) {
+                        editRatingStars[i].classList.add('active');
+                    }
+                }
+            }
+            
+            // Handle click events on stars
+            editRatingInputs.forEach((input) => {
+                input.addEventListener('change', function() {
+                    const value = parseInt(input.value);
+                    const labelIndex = value - 1;
+                    editRatingText.textContent = `${ratingLabels[labelIndex]}: ${value} out of 5 stars`;
+                    updateStars(value);
+                });
+            });
+            
+            // Handle hover events
+            editRatingStars.forEach((star, index) => {
+                // On mouse enter
+                star.addEventListener('mouseenter', () => {
+                    // Clear any previous hover states
+                    editRatingStars.forEach(s => s.classList.remove('hovered'));
+                    
+                    // Add hover class to this star and all previous stars
+                    for (let i = 0; i <= index; i++) {
+                        editRatingStars[i].classList.add('hovered');
+                    }
+                });
+                
+                // On mouse leave, remove all hover states
+                star.addEventListener('mouseleave', () => {
+                    editRatingStars.forEach(s => s.classList.remove('hovered'));
+                });
+            });
+            
+            // Remove all hover classes when mouse leaves the rating container
+            editFeedbackModal.querySelector('.rating-stars').addEventListener('mouseleave', () => {
+                editRatingStars.forEach(s => s.classList.remove('hovered'));
+            });
+            
+            // Handle edit buttons clicks
+            const editButtons = document.querySelectorAll('.edit-feedback-btn');
+            editButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const feedbackId = this.getAttribute('data-feedback-id');
+                    const category = this.getAttribute('data-category');
+                    const subject = this.getAttribute('data-subject');
+                    const message = this.getAttribute('data-message');
+                    const rating = this.getAttribute('data-rating');
+                    
+                    // Set form action
+                    editFeedbackForm.action = `/edit_feedback/${feedbackId}`;
+                    
+                    // Populate form fields
+                    document.getElementById('edit_category').value = category;
+                    document.getElementById('edit_subject').value = subject;
+                    document.getElementById('edit_message').value = message;
+                    
+                    // Set rating
+                    if (rating) {
+                        const ratingInput = document.getElementById(`edit_star${rating}`);
+                        if (ratingInput) {
+                            ratingInput.checked = true;
+                            
+                            // Update rating text and stars
+                            const labelIndex = parseInt(rating) - 1;
+                            editRatingText.textContent = `${ratingLabels[labelIndex]}: ${rating} out of 5 stars`;
+                            updateStars(parseInt(rating));
+                        }
+                    }
+                });
+            });
+            
+            // Handle save button
+            saveEditBtn.addEventListener('click', function() {
+                editFeedbackForm.submit();
+            });
+        });
+    </script>
+</body>
+</html> 

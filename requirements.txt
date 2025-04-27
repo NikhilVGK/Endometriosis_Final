@@ -1,0 +1,16 @@
+Flask==2.0.1
+Werkzeug==2.0.1
+flask-cors
+tensorflow
+keras
+pandas
+numpy
+scikit-learn
+nltk
+pillow
+groq
+python-dotenv
+openai-whisper  # For STT
+elevenlabs       # For TTS
+google-cloud-speech 
+pydub   

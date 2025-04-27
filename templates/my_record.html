@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Record | EndoMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='response.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/my_record.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">EndoMetrics</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/my_record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ session.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="/assessment"><i class="fas fa-clipboard-check me-2"></i>Assessment</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages - Only for My Record page -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if 'medication' in category or 'assessment' in message or 'medication' in message %}
+                        <div class="alert alert-{% if category == 'medication-success' %}success{% elif category == 'medication-error' %}danger{% else %}{{ category }}{% endif %} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <h1 class="mb-4 text-center">My Health Record</h1>
+        <p class="text-center mb-5">Track your symptoms, medications, and health progress over time.</p>
+
+        <!-- Weekly Progress Tracking -->
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Weekly Progress Tracking</h2>
+                <a href="{{ url_for('add_assessment') }}" class="btn btn-primary">
+                    <i class="fas fa-plus-circle me-2"></i> Add New Record
+                </a>
+            </div>
+
+            <!-- Weekly Progress Tracking Cards -->
+            <div class="row mb-5 tracking-section">
+                <!-- Symptom Calendar Card -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                Symptom Calendar
+                            </h5>
+                            <p class="card-text">Track your symptoms daily and identify patterns over time.</p>
+                            <div id="symptomCalendar" class="calendar-container mb-3"></div>
+                            <a href="{{ url_for('add_assessment') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Add Today's Entry
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pain Trends Card -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-chart-line text-primary me-2"></i>
+                                Pain Trends
+                            </h5>
+                            <p class="card-text">Visualize changes in your pain levels over time.</p>
+                            
+                            <!-- Date Range Filter -->
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="btn-group me-3">
+                                    <button type="button" class="btn btn-sm btn-outline-primary active" id="viewAll">All Time</button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="viewDay">Day</button>
+                                </div>
+                                <div id="daySelector" class="d-none">
+                                    <input type="date" class="form-control form-control-sm" id="selectedDate" max="{{ today_date }}">
+                                </div>
+                            </div>
+                            
+                            <div class="chart-container mb-3">
+                                <canvas id="painTrendsChart" height="250"></canvas>
+                            </div>
+                            <div class="text-muted text-center small">
+                                {% if assessments %}
+                                    Last updated: {{ assessments[0].assessment_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    No assessments recorded yet
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Medication Tracker -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-pills text-primary me-2"></i>
+                                Medication Tracker
+                            </h5>
+                            <p class="card-text">Keep track of your medications and set reminders.</p>
+                            <div class="med-reminder-list mb-3">
+                                {% if medications %}
+                                    {% for medication in medications %}
+                                        <div class="med-reminder-item d-flex justify-content-between align-items-center p-2 {% if not loop.last %}border-bottom{% endif %}">
+                                            <div>
+                                                <strong>{{ medication.name }}</strong>
+                                                <div class="small text-muted">{{ medication.dosage }} - {{ medication.frequency }}</div>
+                                            </div>
+                                            <div class="d-flex">
+                                                <div class="btn-group me-2">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary edit-medication" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editMedicationModal" 
+                                                            data-id="{{ medication.id }}"
+                                                            data-name="{{ medication.name }}"
+                                                            data-dosage="{{ medication.dosage }}"
+                                                            data-frequency="{{ medication.frequency }}"
+                                                            data-notes="{{ medication.notes }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger delete-medication"
+                                                            data-id="{{ medication.id }}"
+                                                            data-name="{{ medication.name }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="p-3 text-center text-muted">
+                                        <i class="fas fa-info-circle mb-2"></i>
+                                        <p>No medications added yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('add_medication') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Add Medication
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Record History -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="fas fa-history text-primary me-2"></i>
+                                Record History
+                            </h5>
+                            <p class="card-text">View your records created on this page and track your progress over time.</p>
+                            <div class="assessment-list mb-3" style="max-height: 220px; overflow-y: auto;">
+                                {% if assessments %}
+                                    <div class="list-group">
+                                        {% for assessment in assessments[:5] %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1">
+                                                        {% if assessment.pain_level >= 7 %}
+                                                            <span class="badge bg-danger me-2">Severe</span>
+                                                        {% elif assessment.pain_level >= 4 %}
+                                                            <span class="badge bg-warning text-dark me-2">Moderate</span>
+                                                        {% else %}
+                                                            <span class="badge bg-success me-2">Mild</span>
+                                                        {% endif %}
+                                                        Pain Level: {{ assessment.pain_level }}/10
+                                                    </h6>
+                                                    <small>{{ assessment.assessment_date.strftime('%Y-%m-%d') }}</small>
+                                                </div>
+                                                <p class="mb-1">{{ assessment.pain_location or 'No location specified' }}</p>
+                                                <small class="text-muted">
+                                                    {% if assessment.prediction_result %}
+                                                        {{ assessment.prediction_result }}
+                                                    {% else %}
+                                                        No prediction available
+                                                    {% endif %}
+                                                </small>
+                                                <div class="mt-2 d-flex">
+                                                    <a href="{{ url_for('assessment_detail', assessment_id=assessment.id) }}" class="btn btn-sm btn-outline-secondary me-2">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </a>
+                                                    <a href="{{ url_for('edit_assessment', assessment_id=assessment.id) }}" class="btn btn-sm btn-outline-primary me-2">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </a>
+                                                    <a href="#" 
+                                                       data-assessment-id="{{ assessment.id }}"
+                                                       data-assessment-date="{{ assessment.assessment_date.strftime('%Y-%m-%d') }}"
+                                                       class="btn btn-sm btn-outline-danger delete-assessment">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="p-3 text-center text-muted">
+                                        <i class="fas fa-info-circle mb-2"></i>
+                                        <p>No assessments recorded yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ url_for('add_assessment') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Add New Record
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Symptom Trends -->
+        <div class="trends-container">
+            <h2 class="mb-4">Symptom Trends</h2>
+            <p class="mb-4">Visualize how your symptoms have changed over time. This helps in identifying patterns and tracking the effectiveness of treatments.</p>
+            <div class="chart-placeholder p-5 bg-light text-center rounded">
+                <i class="fas fa-chart-line fa-3x mb-3 text-secondary"></i>
+                <h5>Symptom chart will appear here after multiple assessments</h5>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Medication Modal -->
+    <div class="modal fade" id="editMedicationModal" tabindex="-1" aria-labelledby="editMedicationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editMedicationModalLabel">Edit Medication</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editMedicationForm" action="" method="POST">
+                        <input type="hidden" name="medication_id" id="edit_medication_id">
+                        
+                        <div class="mb-3">
+                            <label for="edit_name" class="form-label">Medication Name</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit_dosage" class="form-label">Dosage</label>
+                            <input type="text" class="form-control" id="edit_dosage" name="dosage" placeholder="e.g., 10mg">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit_frequency" class="form-label">Frequency</label>
+                            <select class="form-select" id="edit_frequency" name="frequency">
+                                <option value="Once daily">Once daily</option>
+                                <option value="Twice daily">Twice daily</option>
+                                <option value="Three times daily">Three times daily</option>
+                                <option value="Four times daily">Four times daily</option>
+                                <option value="As needed">As needed</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Monthly">Monthly</option>
+                                <option value="Other">Other (specify in notes)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="edit_notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="edit_notes" name="notes" rows="2"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveMedicationChanges">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2023 EndoMetrics. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <!-- Custom scripts -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <!-- Calendar and Chart Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded - initializing calendar and chart");
+            
+            // Initialize Symptom Calendar
+            var calendarEl = document.getElementById('symptomCalendar');
+            if (calendarEl) {
+                console.log("Calendar element found, initializing FullCalendar");
+                
+                // Parse calendar events from server data
+                var calendarEvents = JSON.parse('{{ calendar_events|safe }}');
+                
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next',
+                        center: 'title',
+                        right: 'dayGridMonth'
+                    },
+                    height: 350,
+                    contentHeight: 'auto',
+                    aspectRatio: 1.35,
+                    events: calendarEvents,
+                    eventClick: function(info) {
+                        // Redirect to assessment detail page
+                        window.location.href = '/assessment_detail/' + info.event.extendedProps.assessment_id;
+                    },
+                    dateClick: function(info) {
+                        // Get current date and time
+                        const currentDate = new Date();
+                        const now = new Date();
+                        currentDate.setHours(0, 0, 0, 0); // Reset time part for proper comparison
+                        
+                        // Get clicked date
+                        const clickedDate = new Date(info.dateStr);
+                        const clickedDateOnly = new Date(info.dateStr);
+                        clickedDateOnly.setHours(0, 0, 0, 0); // Reset time for date comparison
+                        
+                        // Format date for URL
+                        const formattedDate = info.dateStr.split('T')[0]; // Get YYYY-MM-DD part
+                        
+                        // Check if clicked date is in the future
+                        if (clickedDateOnly > currentDate) {
+                            // Future date - show message
+                            showDateMessage("You can only add assessments for today or past dates.");
+                            return;
+                        }
+                        
+                        // If date is clicked in month view, go to day view of that date
+                        if (info.view.type === 'dayGridMonth') {
+                            calendar.changeView('timeGridDay', formattedDate);
+                            return;
+                        }
+                        
+                        // Handle day view clicks (time slots)
+                        if (info.view.type === 'timeGridDay') {
+                            // Get the clicked hour
+                            let hour = 12; // Default to noon
+                            if (info.date) {
+                                hour = info.date.getHours();
+                            }
+                            
+                            // For today, check if the clicked hour has passed
+                            if (clickedDateOnly.getTime() === currentDate.getTime()) { // Same day
+                                if (hour > now.getHours()) {
+                                    showDateMessage("You can only add assessments for hours that have already passed.");
+                                    return;
+                                }
+                            }
+                            
+                            // Redirect to add assessment with date and hour
+                            window.location.href = "{{ url_for('add_assessment') }}?date=" + formattedDate + "&hour=" + hour;
+                        }
+                    },
+                    // Display settings
+                    displayEventTime: true,
+                    slotMinTime: '00:00:00',
+                    slotMaxTime: '23:59:59',
+                    slotDuration: '01:00:00',
+                    timeFormat: 'HH:mm',
+                    nowIndicator: true,
+                    eventTimeFormat: {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    },
+                    // Customize event rendering
+                    eventDidMount: function(info) {
+                        // Add custom styling or tooltips
+                        if (info.event.extendedProps.type === 'hourly') {
+                            // For hourly events, add additional styling
+                            info.el.style.borderWidth = '2px';
+                            
+                            // Hide hourly events in month view
+                            if (info.view.type === 'dayGridMonth') {
+                                info.el.style.display = 'none';
+                            }
+                        }
+                    },
+                    // Ensure proper time grid display
+                    views: {
+                        timeGridDay: {
+                            dayMaxEvents: false, // Allow all events to be displayed
+                            slotEventOverlap: false, // Don't allow events to overlap
+                            allDaySlot: true // Keep the all-day slot for daily averages
+                        }
+                    }
+                });
+                calendar.render();
+                console.log("Calendar rendered");
+            } else {
+                console.error("Calendar element not found");
+            }
+
+            // Initialize Pain Trends Chart
+            var chartEl = document.getElementById('painTrendsChart');
+            if (chartEl) {
+                console.log("Chart element found, initializing Chart.js");
+                
+                // Parse trends data from server
+                var trendsData = JSON.parse('{{ trends_data|safe }}');
+                var labels = trendsData.labels || [];
+                var values = trendsData.values || [];
+                
+                // Parse calendar events to extract hourly data
+                var calendarEvents = JSON.parse('{{ calendar_events|safe }}');
+                var hourlyDataByDate = {};
+                
+                // Process hourly data
+                calendarEvents.forEach(function(event) {
+                    if (event.extendedProps && event.extendedProps.type === 'hourly') {
+                        const date = event.start.split('T')[0];
+                        const hour = event.extendedProps.hour;
+                        const painMatch = event.title.match(/Pain (\d+)/);
+                        const painValue = painMatch ? parseInt(painMatch[1]) : 0;
+                        
+                        if (!hourlyDataByDate[date]) {
+                            hourlyDataByDate[date] = [];
+                        }
+                        
+                        hourlyDataByDate[date].push({
+                            hour: hour,
+                            pain: painValue,
+                            title: event.title,
+                            displayHour: event.title.split(':')[0]
+                        });
+                    }
+                });
+                
+                // Default data if no assessments exist
+                if (labels.length === 0) {
+                    labels = ['No Data'];
+                    values = [0];
+                }
+                
+                var ctx = chartEl.getContext('2d');
+                var painChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Pain Level',
+                            data: values,
+                            borderColor: '#4A90E2',
+                            backgroundColor: 'rgba(74, 144, 226, 0.2)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 10,
+                                title: {
+                                    display: true,
+                                    text: 'Pain Intensity (0-10)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Day view button functionality
+                document.getElementById('viewDay').addEventListener('click', function() {
+                    document.getElementById('viewAll').classList.remove('active');
+                    this.classList.add('active');
+                    document.getElementById('daySelector').classList.remove('d-none');
+                    
+                    // If there's already a date selected, update the chart
+                    if (document.getElementById('selectedDate').value) {
+                        updateDayView(document.getElementById('selectedDate').value);
+                    } else {
+                        // Set to latest date if available
+                        if (labels.length > 0 && labels[labels.length-1] !== 'No Data') {
+                            document.getElementById('selectedDate').value = labels[labels.length-1];
+                            updateDayView(labels[labels.length-1]);
+                        }
+                    }
+                });
+                
+                // All time view button functionality
+                document.getElementById('viewAll').addEventListener('click', function() {
+                    document.getElementById('viewDay').classList.remove('active');
+                    this.classList.add('active');
+                    document.getElementById('daySelector').classList.add('d-none');
+                    
+                    // Restore original chart data
+                    painChart.data.labels = labels;
+                    painChart.data.datasets[0].data = values;
+                    painChart.data.datasets[0].label = 'Pain Level';
+                    painChart.update();
+                });
+                
+                // Date selector functionality
+                document.getElementById('selectedDate').addEventListener('change', function() {
+                    updateDayView(this.value);
+                });
+                
+                // Function to update chart for a specific day
+                function updateDayView(selectedDate) {
+                    if (hourlyDataByDate[selectedDate]) {
+                        // Sort hourly data by hour
+                        const dayData = hourlyDataByDate[selectedDate].sort((a, b) => a.hour - b.hour);
+                        
+                        // Update chart with hourly data for the selected day
+                        painChart.data.labels = dayData.map(item => item.displayHour);
+                        painChart.data.datasets[0].data = dayData.map(item => item.pain);
+                        painChart.data.datasets[0].label = 'Hourly Pain Level - ' + selectedDate;
+                        painChart.update();
+                    } else {
+                        // No hourly data for this date
+                        painChart.data.labels = ['No Data'];
+                        painChart.data.datasets[0].data = [0];
+                        painChart.data.datasets[0].label = 'No hourly data for ' + selectedDate;
+                        painChart.update();
+                    }
+                }
+                
+                console.log("Chart rendered");
+            } else {
+                console.error("Chart element not found");
+            }
+        });
+        
+        // Function to show date selection message
+        function showDateMessage(message) {
+            // Create a Bootstrap toast element
+            const toastEl = document.createElement('div');
+            toastEl.className = 'toast align-items-center text-white bg-danger border-0 position-fixed top-50 start-50 translate-middle';
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            
+            // Toast content
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-exclamation-circle me-2"></i> ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Add toast to document
+            document.body.appendChild(toastEl);
+            
+            // Initialize and show the toast
+            const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+            toast.show();
+            
+            // Remove toast after it's hidden
+            toastEl.addEventListener('hidden.bs.toast', function() {
+                document.body.removeChild(toastEl);
+            });
+        }
+        
+        // Function to confirm deletion of an assessment
+        function confirmDelete(assessmentId, date) {
+            if (confirm(`Are you sure you want to delete the assessment from ${date}? This action cannot be undone.`)) {
+                window.location.href = "{{ url_for('delete_assessment', assessment_id=0) }}".replace('0', assessmentId);
+            }
+        }
+        
+        // Add event listeners to delete buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('.delete-assessment');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const assessmentId = this.getAttribute('data-assessment-id');
+                    const date = this.getAttribute('data-assessment-date');
+                    confirmDelete(assessmentId, date);
+                });
+            });
+            
+            // Medication Edit Functionality
+            const editButtons = document.querySelectorAll('.edit-medication');
+            editButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Get data from button attributes
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    const dosage = this.getAttribute('data-dosage');
+                    const frequency = this.getAttribute('data-frequency');
+                    const notes = this.getAttribute('data-notes');
+                    
+                    // Populate form
+                    document.getElementById('edit_medication_id').value = id;
+                    document.getElementById('edit_name').value = name;
+                    document.getElementById('edit_dosage').value = dosage || '';
+                    
+                    // Set frequency dropdown
+                    const frequencyDropdown = document.getElementById('edit_frequency');
+                    let optionExists = false;
+                    
+                    for (let i = 0; i < frequencyDropdown.options.length; i++) {
+                        if (frequencyDropdown.options[i].value === frequency) {
+                            frequencyDropdown.selectedIndex = i;
+                            optionExists = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!optionExists && frequency) {
+                        // If custom frequency, select "Other"
+                        for (let i = 0; i < frequencyDropdown.options.length; i++) {
+                            if (frequencyDropdown.options[i].value === 'Other') {
+                                frequencyDropdown.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    document.getElementById('edit_notes').value = notes || '';
+                    
+                    // Set form action
+                    document.getElementById('editMedicationForm').action = "{{ url_for('edit_medication', medication_id=0) }}".replace('0', id);
+                });
+            });
+            
+            // Save medication changes
+            document.getElementById('saveMedicationChanges').addEventListener('click', function() {
+                document.getElementById('editMedicationForm').submit();
+            });
+            
+            // Medication Delete Functionality
+            const deleteMedicationButtons = document.querySelectorAll('.delete-medication');
+            deleteMedicationButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    
+                    if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+                        // Create a form to submit the delete request
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = "{{ url_for('delete_medication', medication_id=0) }}".replace('0', id);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

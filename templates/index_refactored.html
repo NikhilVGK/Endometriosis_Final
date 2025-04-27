@@ -1,0 +1,1832 @@
+{% extends 'base.html' %}
+{% block title %}Home - Endometrics Analysis Tool{% endblock %}
+
+{% block content %}
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-overlay"></div>
+        <div class="hero-content text-center">
+            <h1 class="hero-title">Endometriosis Analysis Tool</h1>
+            <p class="hero-subtitle">Advanced healthcare monitoring for better understanding and management of endometriosis symptoms</p>
+            <div class="mt-4">
+                <a href="/assessment" class="btn btn-light btn-lg px-4 me-3">
+                    <i class="fas fa-clipboard-check me-2"></i>Start Assessment
+                </a>
+                <a href="#learn-more" class="btn btn-outline-light btn-lg px-4">
+                    <i class="fas fa-info-circle me-2"></i>Learn More
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Menstrual Cycle Tracker Card -->
+        <div class="row mt-4">
+            <div class="col-12">
+                {% include 'menstrual_cycle_card.html' with context %}
+            </div>
+        </div>
+
+        <!-- Share Your Story Section -->
+        <div class="row mt-5 g-4">
+            <div class="col-md-8">
+            <div class="form-section">
+                    <div class="hearts-decoration">
+                        <i class="fas fa-heart"></i>
+                        <i class="fas fa-heart"></i>
+                        <i class="fas fa-heart"></i>
+                </div>
+                    <div class="section-title">
+                        <i class="fas fa-heart"></i>
+                        <h3>Share Your Story</h3>
+                    </div>
+                    <p class="positive-message">Your story can inspire others ❤️ You're stronger than you know!</p>
+                    <div class="mb-4">
+                        <form action="{{ url_for('submit_story') }}" method="POST" id="storyForm">
+                            <p class="text-muted">Your experience matters. Share your journey anonymously to help others feel less alone.</p>
+                            <textarea class="form-control mb-3" id="story_content" name="story_content" rows="3"
+                                placeholder="Share your endometriosis journey (optional)..."></textarea>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="share_story" name="share_story" checked>
+                                <label class="form-check-label" for="share_story">
+                                    I agree to share my story anonymously to help others
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary mt-3" id="shareStoryBtn">
+                                <i class="fas fa-paper-plane me-2"></i>Share Your Story
+                            </button>
+                            <div class="mt-2 text-success" id="storySubmitSuccess" style="display:none;">
+                                <i class="fas fa-check-circle"></i> Thank you for sharing your story! It will appear in the Stories section.
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                <img src="{{ url_for('static', filename='360_F_575870538_ooq0QnZTtIF1sSZe91O4rw9CoJx9rHnf.jpg') }}" 
+                     alt="Woman Health" 
+                     class="img-fluid rounded shadow-lg img-fit-contain">
+                </div>
+            </div>
+
+        <!-- Endometriosis Myth Buster -->
+        <div class="row mt-5 mb-5 g-4">
+            <div class="col-md-8">
+            <div class="form-section">
+                    <h3><i class="fas fa-question-circle me-2"></i>Myth Buster</h3>
+                    <div class="myth-card" id="mythBusterCard">
+                        <div class="myth-card-inner">
+                            <div class="myth-front bg-light">
+                                <h5>Common Myth</h5>
+                                <p id="mythText">Loading myth...</p>
+                                <small class="text-muted">Hover to see the truth</small>
+                            </div>
+                            <div class="myth-back">
+                                <h5>Fact</h5>
+                                <p id="factText">Loading fact...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="refreshMythBtn" class="btn btn-sm btn-primary mt-3">
+                        <i class="fas fa-sync-alt me-1"></i> New Myth
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                <img src="{{ url_for('static', filename='woman-looking-at-the-view-from-her-campervan-picture-id1316453720.jpg') }}" 
+                     alt="Woman Lifestyle" 
+                     class="img-fluid rounded shadow-lg img-fit-contain">
+                    </div>
+                </div>
+                
+        <!-- Service Grid with centered layout -->
+        <div class="text-center mt-5 pt-4">
+            <h2 class="mb-4">Our Services</h2>
+            <div class="service-grid">
+                <!-- Hospitals -->
+                <div class="service-box">
+                    <i class="fas fa-hospital"></i>
+                    <h3>Hospitals</h3>
+                    <div class="service-count">150+</div>
+                    <p>Leading hospitals across the country</p>
+                    <button class="btn btn-outline-primary mt-3">Find Hospitals</button>
+                </div>
+                
+                <!-- Doctors -->
+                <div class="service-box">
+                    <i class="fas fa-user-md"></i>
+                    <h3>Doctors</h3>
+                    <div class="service-count">500+</div>
+                    <p>Specialized endometriosis experts</p>
+                    <button class="btn btn-outline-primary mt-3">Find Doctors</button>
+                </div>
+                
+                <!-- Clinics -->
+                <div class="service-box">
+                    <i class="fas fa-clinic-medical"></i>
+                    <h3>Clinics</h3>
+                    <div class="service-count">300+</div>
+                    <p>Specialized women's health clinics</p>
+                    <button class="btn btn-outline-primary mt-3">Find Clinics</button>
+                </div>
+
+                <!-- Diagnostic Centers -->
+                <div class="service-box">
+                    <i class="fas fa-microscope"></i>
+                    <h3>Diagnostic Centers</h3>
+                    <div class="service-count">200+</div>
+                    <p>Advanced diagnostic facilities</p>
+                    <button class="btn btn-outline-primary mt-3">Find Centers</button>
+            </div>
+
+                <!-- Medicine Delivery -->
+                <div class="service-box">
+                    <i class="fas fa-pills"></i>
+                    <h3>Medicine Delivery</h3>
+                    <div class="service-count">1000+</div>
+                    <p>Pincodes covered for delivery</p>
+                    <button class="btn btn-outline-primary mt-3">Order Medicine</button>
+                </div>
+            </div>
+                </div>
+                
+        <!-- Stories of Our Users Section -->
+        <section class="stories-section mt-5 pt-4">
+            <h2 class="text-center mb-5">Stories of Our Users</h2>
+            
+            <!-- Story cards container with auto-scroll -->
+            <div class="story-carousel">
+                <div class="story-track" id="storyTrack">
+                    <!-- Added 3 Hardcoded stories -->
+                    <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='avatars/avatar_1.jpg') }}" alt="Sarah" class="story-avatar">
+                            <h4>Sarah J.</h4>
+                            <p class="text-muted">2024-03-10</p>
+                        </div>
+                        <div class="story-content">
+                            <p>"This platform helped me understand my symptoms like never before. Feeling more in control!"</p>
+                        </div>
+                        <div class="story-footer">
+                            <i class="fas fa-heart text-danger"></i> 
+                            <span>Shared with love</span>
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='avatars/avatar_2.jpg') }}" alt="Maria G." class="story-avatar">
+                            <h4>Maria G.</h4>
+                            <p class="text-muted">2024-02-25</p>
+                        </div>
+                        <div class="story-content">
+                            <p>"Connecting with others here made me realize I wasn't alone. The community support is invaluable."</p>
+                        </div>
+                        <div class="story-footer">
+                            <i class="fas fa-heart text-danger"></i> 
+                            <span>Shared with love</span>
+                        </div>
+                    </div>
+                    <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='avatars/avatar_3.jpg') }}" alt="Chloe T." class="story-avatar">
+                            <h4>Chloe T.</h4>
+                            <p class="text-muted">2024-01-15</p>
+                        </div>
+                        <div class="story-content">
+                            <p>"Finally found a specialist who listened, thanks to the resources shared here. Making progress!"</p>
+                        </div>
+                        <div class="story-footer">
+                            <i class="fas fa-heart text-danger"></i> 
+                            <span>Shared with love</span>
+                        </div>
+                    </div>
+                    <!-- End Hardcoded stories -->
+                    
+                    {% for story_data in shared_stories %}
+                        <div class="story-card">
+                            <div class="story-user">
+                                {% set avatar_url = url_for('static', filename=story_data.avatar if story_data.avatar else 'images/default_avatar.png') %}
+                                <img src="{{ avatar_url }}" 
+                                     alt="{{ story_data.user_first_name }}" 
+                                     class="story-avatar"
+                                     onerror="this.src='{{ url_for('static', filename='images/default_avatar.png') }}';">
+                                <h4>{{ story_data.user_first_name }}</h4>
+                                <p class="text-muted">{{ story_data.created_at }}</p>
+                            </div>
+                            <div class="story-content">
+                                <p>"{{ story_data.content }}"</p>
+                            </div>
+                            <div class="story-footer">
+                                <i class="fas fa-heart text-danger"></i> 
+                                <span>Shared with love</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section with added padding -->
+        <section class="testimonial-section mt-5 pt-4">
+            <h2 class="text-center mb-5">What Our Patients Say</h2>
+            <div class="testimonial-carousel">
+                <div class="testimonial-track">
+                    <!-- Added 3 Hardcoded feedback/testimonial cards -->
+                    <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='avatars/avatar_4.jpg') }}" alt="David L." class="story-avatar">
+                            <h4>David L.</h4>
+                            <p class="text-muted testimonial-subtitle">• General Feedback</p>
+                        </div>
+                        <div class="story-content">
+                            <p>"The app is incredibly helpful for tracking daily symptoms. Very intuitive interface."</p>
+                        </div>
+                        <div class="story-rating mb-2">
+                            <i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i>
+                        </div>
+                    </div>
+                     <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='images/default_avatar.png') }}" alt="Anonymous" class="story-avatar">
+                            <h4>Anonymous</h4>
+                            <p class="text-muted testimonial-subtitle">• Feature Request</p>
+                        </div>
+                        <div class="story-content">
+                            <p>"Would love to see integration with my calendar for tracking appointments alongside symptoms."</p>
+                        </div>
+                        <div class="story-rating mb-2">
+                            <i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="far fa-star text-warning"></i>
+                        </div>
+                    </div>
+                     <div class="story-card">
+                        <div class="story-user">
+                            <img src="{{ url_for('static', filename='avatars/avatar_5.jpg') }}" alt="Priya S." class="story-avatar">
+                            <h4>Priya S.</h4>
+                            <p class="text-muted testimonial-subtitle">• Testimonial</p> 
+                        </div>
+                        <div class="story-content">
+                            <p>"Managing my endo felt overwhelming, but this tool provides clarity and support."</p>
+                        </div>
+                        <div class="story-rating mb-2">
+                             <i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i><i class="fas fa-star text-warning"></i>
+                        </div>
+                    </div>
+                    <!-- End Hardcoded cards -->
+                    
+                    {% for item in testimonials %}
+                        <div class="story-card">
+                            <div class="story-user">
+                                {% set avatar_url = url_for('static', filename=item.avatar if item.avatar else 'images/default_avatar.png') %}
+                                <img src="{{ avatar_url }}" 
+                                     alt="{{ item.name or 'Anonymous' }}" 
+                                     class="story-avatar"
+                                     onerror="this.src='{{ url_for('static', filename='images/default_avatar.png') }}';">
+                                <h4>{{ item.name or 'Anonymous' }}</h4>
+                                <p class="text-muted testimonial-subtitle">• Testimonial</p>
+                            </div>
+                            <div class="story-content">
+                                <p>"{{ item.content }}"</p>
+                            </div>
+                            <div class="story-rating mb-2">
+                                {% if item.rating %}
+                                    {% for i in range(item.rating) %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% endfor %}
+                                    {% for i in range(5 - item.rating) %}
+                                        <i class="far fa-star text-warning"></i>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted small">No rating provided</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Benefits Section with added padding -->
+        <section class="benefits-section mt-5 pt-4">
+            <div class="benefits-container">
+                <h2 class="benefits-title">Why Choose Our Platform?</h2>
+                <div class="benefits-grid">
+                    <div class="benefit-card">
+                        <i class="fas fa-shield-alt"></i>
+                        <h4>Comprehensive Care</h4>
+                        <p>Access to a network of specialized healthcare providers, latest treatments, and support resources all in one place.</p>
+                </div>
+                    <div class="benefit-card">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Smart Tracking</h4>
+                        <p>Advanced symptom tracking with AI-powered insights helps you understand your patterns better.</p>
+            </div>
+                    <div class="benefit-card">
+                        <i class="fas fa-users"></i>
+                        <h4>Supportive Community</h4>
+                        <p>Connect with others who understand your journey and share experiences in a safe space.</p>
+        </div>
+                    <div class="benefit-card">
+                        <i class="fas fa-lock"></i>
+                        <h4>Privacy First</h4>
+                        <p>Your data is secure and private, with full control over what you share with healthcare providers.</p>
+                    </div>
+                    <div class="benefit-card">
+                        <i class="fas fa-book-medical"></i>
+                        <h4>Educational Resources</h4>
+                        <p>Access to latest research, treatment options, and lifestyle management tips.</p>
+                    </div>
+                    <div class="benefit-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h4>Always Accessible</h4>
+                        <p>Track your symptoms, access resources, and connect with healthcare providers anytime, anywhere.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonial Modal -->
+        <div class="modal fade" id="testimonialModal" tabindex="-1" aria-labelledby="testimonialModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="testimonialModalLabel">Share Your Experience</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="{{ url_for('submit_testimonial') }}" method="post">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="display_name" class="form-label">Your Name (Optional)</label>
+                                <input type="text" class="form-control" id="display_name" name="display_name" placeholder="Leave blank to remain anonymous">
+                            </div>
+                            <div class="mb-3">
+                                <label for="rating" class="form-label">Rating</label>
+                                <div class="rating-input">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="rating" id="rating1" value="1">
+                                        <label class="form-check-label" for="rating1">1</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="rating" id="rating2" value="2">
+                                        <label class="form-check-label" for="rating2">2</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="rating" id="rating3" value="3">
+                                        <label class="form-check-label" for="rating3">3</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="rating" id="rating4" value="4">
+                                        <label class="form-check-label" for="rating4">4</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="rating" id="rating5" value="5" checked>
+                                        <label class="form-check-label" for="rating5">5</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="content" class="form-label">Your Experience</label>
+                                <textarea class="form-control" id="content" name="content" rows="4" required placeholder="Share how EndoMetrics has helped you..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container text-center">
+                <div class="footer-content mx-auto" style="max-width: 1000px;">
+                    <div class="row justify-content-center">
+                        <div class="col-md-4 mb-4">
+                            <h5>Quick Links</h5>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="text-muted">Home</a></li>
+                                <li><a href="#" class="text-muted">About</a></li>
+                                <li><a href="#" class="text-muted">Contact</a></li>
+                                <li><a href="#" class="text-muted">Privacy Policy</a></li>
+                            </ul>
+                </div>
+                        <div class="col-md-4 mb-4">
+                            <h5>Resources</h5>
+                            <ul class="list-unstyled">
+                                <li><a href="#" class="text-muted">Educational Materials</a></li>
+                                <li><a href="#" class="text-muted">Find a Specialist</a></li>
+                                <li><a href="#" class="text-muted">Support Groups</a></li>
+                                <li><a href="#" class="text-muted">Research</a></li>
+                            </ul>
+            </div>
+                        <div class="col-md-4 mb-4">
+                            <h5>Connect</h5>
+                            <div class="social-links mb-3">
+                                <a href="#" class="text-muted me-3"><i class="fab fa-facebook"></i></a>
+                                <a href="#" class="text-muted me-3"><i class="fab fa-twitter"></i></a>
+                                <a href="#" class="text-muted me-3"><i class="fab fa-instagram"></i></a>
+                                <a href="#" class="text-muted"><i class="fab fa-linkedin"></i></a>
+                            </div>
+                            <p>
+                                <i class="fas fa-user-md"></i> 
+                                <span id="specialistCount">Loading...</span>
+                            </p>
+                        </div>
+                    </div>
+                    <hr class="mx-auto" style="max-width: 200px;">
+                    <p class="text-center mb-0">Built with care for those navigating endometriosis.</p>
+            </div>
+        </div>
+        </footer>
+        </div>
+
+    <!-- Medication Reminder Modal -->
+    <div class="modal fade" id="medicationReminderModal" tabindex="-1" aria-labelledby="medicationReminderModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered med-reminder-popup">
+            <div class="modal-content">
+                <div class="modal-header med-reminder-header">
+                    <h5 class="modal-title" id="medicationReminderModalLabel">
+                        <i class="fas fa-pills me-2"></i> Medication Reminder
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if med_reminders %}
+                        <p class="mb-3">Please check off medications you've taken today:</p>
+                        <div id="medicationList">
+                            {% for med in med_reminders %}
+                                <div class="med-reminder-item" id="med-item-{{ med.id }}">
+                                    <div class="med-reminder-info">
+                                        <div>
+                                            <div class="med-reminder-name">{{ med.name }}</div>
+                                            <div class="med-reminder-details">
+                                                {% if med.dosage %}{{ med.dosage }} • {% endif %}
+                                                {% if med.frequency %}{{ med.frequency }}{% endif %}
+                                            </div>
+                                            {% if med.required_times is defined and med.required_times > 1 %}
+                                            <div class="progress mt-2" style="height: 6px;">
+                                                <div class="progress-bar bg-success" role="progressbar" 
+                                                     style="width: {{ (med.times_taken / med.required_times * 100)|int }}%"
+                                                     aria-valuenow="{{ med.times_taken }}" 
+                                                     aria-valuemin="0" 
+                                                     aria-valuemax="{{ med.required_times }}"></div>
+                                            </div>
+                                            <div class="small text-muted mt-1">
+                                                <span class="text-success">{{ med.times_taken }}</span> of {{ med.required_times }} doses taken
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input med-reminder-check" type="checkbox" 
+                                                   id="med-check-{{ med.id }}" 
+                                                   data-med-id="{{ med.id }}"
+                                                   data-med-name="{{ med.name }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-center">You have no medications to take today!</p>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <div class="form-check me-auto">
+                        <input class="form-check-input" type="checkbox" id="dontShowRemindersToday">
+                        <label class="form-check-label small" for="dontShowRemindersToday">
+                            Don't show again today
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    {% if med_reminders %}
+                        <button type="button" class="btn btn-primary" id="saveAllMedications">Save All</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase Motivation Modal -->
+    <div class="modal fade" id="phaseMotivationModal" tabindex="-1" aria-labelledby="phaseMotivationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                {% if cycle_info %}
+                <div class="phase-motivation-header 
+                    {% if cycle_info.current_phase == 'Menstrual Phase' %}menstrual-phase
+                    {% elif cycle_info.current_phase == 'Follicular Phase' %}follicular-phase
+                    {% elif cycle_info.current_phase == 'Ovulation Phase' %}ovulation-phase
+                    {% elif cycle_info.current_phase == 'Luteal Phase' %}luteal-phase
+                    {% else %}default-phase{% endif %}">
+                    <h5 class="modal-title fw-bold" id="phaseMotivationModalLabel">
+                        {% if cycle_info.current_phase %}
+                            Your {{ cycle_info.current_phase }} Insights
+                        {% else %}
+                            Your Cycle Insights
+                        {% endif %}
+                    </h5>
+                    <p class="mb-0 small">Daily motivation based on your current cycle phase</p>
+                </div>
+                <div class="modal-body">
+                    <div class="quote-container mb-3">
+                        <i class="fas fa-quote-left text-muted opacity-50 me-2"></i>
+                        <p class="lead" id="phaseQuoteText">Loading your personalized insight...</p>
+                        <i class="fas fa-quote-right text-muted opacity-50 float-end"></i>
+                    </div>
+                    
+                    <h6 class="fw-bold mt-4">Phase-Specific Tips:</h6>
+                    <ul class="phase-tips-list" id="phaseTipsList">
+                        <li>Loading personalized tips for your current phase...</li>
+                    </ul>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="dontShowToday">
+                        <label class="form-check-label small" for="dontShowToday">
+                            Don't show again today
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+                {% else %}
+                <div class="phase-motivation-header default-phase">
+                    <h5 class="modal-title fw-bold" id="phaseMotivationModalLabel">
+                        Your Wellness Insights
+                    </h5>
+                    <p class="mb-0 small">Daily motivation for your wellbeing</p>
+                </div>
+                <div class="modal-body">
+                    <div class="quote-container mb-3">
+                        <i class="fas fa-quote-left text-muted opacity-25 fa-2x float-start me-2 mt-n2"></i>
+                            <p class="lead" id="phaseQuoteText">Every day is an opportunity to honor your body's wisdom. Listen to its signals and respond with compassion and care.</p>
+                    </div>
+                    
+                    <h6 class="fw-bold mt-4">Wellness Tips:</h6>
+                    <ul class="phase-tips-list" id="phaseTipsList">
+                        <li>Stay hydrated throughout the day</li>
+                        <li>Honor your body's need for rest and recovery</li>
+                        <li>Move in ways that feel good to your body</li>
+                        <li>Nourish yourself with whole, nutrient-dense foods</li>
+                    </ul>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="dontShowToday">
+                        <label class="form-check-label small" for="dontShowToday">
+                            Don't show again today
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }} 
+    <script id="mainScript" 
+        data-has-med-reminders="{% if med_reminders %}true{% else %}false{% endif %}">
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch a random myth and fact when page loads
+            fetchRandomMyth();
+            
+            // Add event listener for refresh button
+            document.getElementById('refreshMythBtn').addEventListener('click', function(e) {
+                // Stop propagation to prevent card flip
+                e.stopPropagation();
+                // Fetch new myth
+                fetchRandomMyth();
+            });
+            
+            // Show medication reminder modal if there are reminders
+            const mainScript = document.getElementById('mainScript');
+            const hasMedReminders = mainScript.getAttribute('data-has-med-reminders') === 'true';
+            
+            // Check if user has chosen not to see reminders today
+            const hideRemindersToday = localStorage.getItem('hideRemindersToday') === 'true' && 
+                                     new Date(localStorage.getItem('hideRemindersDate')).toDateString() === new Date().toDateString();
+            
+            if (hasMedReminders && !hideRemindersToday) {
+                let medModal = new bootstrap.Modal(document.getElementById('medicationReminderModal'));
+                medModal.show();
+                
+                // Add event listeners to medication checkboxes
+                const checkboxes = document.querySelectorAll('.med-reminder-check');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            markMedicationAsTaken(
+                                this.getAttribute('data-med-id'), 
+                                this.getAttribute('data-med-name')
+                            );
+                        }
+                    });
+                });
+                
+                // "Don't show again today" option
+                const dontShowCheckbox = document.getElementById('dontShowRemindersToday');
+                if (dontShowCheckbox) {
+                    dontShowCheckbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            localStorage.setItem('hideRemindersToday', 'true');
+                            localStorage.setItem('hideRemindersDate', new Date().toISOString());
+                        } else {
+                            localStorage.removeItem('hideRemindersToday');
+                            localStorage.removeItem('hideRemindersDate');
+                        }
+                    });
+                }
+                
+                // Add event listener to "Save All" button
+                document.getElementById('saveAllMedications').addEventListener('click', function() {
+                    const allCheckboxes = document.querySelectorAll('.med-reminder-check');
+                    let checkedCount = 0;
+                    
+                    // Mark each medication as taken sequentially
+                    const markNext = (index) => {
+                        if (index >= allCheckboxes.length) {
+                            // All done, close the modal after a short delay
+                            setTimeout(() => {
+                                medModal.hide();
+                            }, 1000);
+                            return;
+                        }
+                        
+                        const checkbox = allCheckboxes[index];
+                        checkbox.checked = true;
+                        
+                        markMedicationAsTaken(
+                            checkbox.getAttribute('data-med-id'), 
+                            checkbox.getAttribute('data-med-name'),
+                            () => markNext(index + 1) // Call next after this one completes
+                        );
+                    };
+                    
+                    // Start marking medications sequentially
+                    markNext(0);
+                });
+            }
+            
+            // Function to mark medication as taken
+            function markMedicationAsTaken(medId, medName, callback) {
+                const formData = new FormData();
+                formData.append('medication_id', medId);
+                
+                fetch('/mark_medication_taken', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Animation to show medication was marked as taken
+                        const medItem = document.getElementById(`med-item-${medId}`);
+                        
+                        // Update progress bar if this is a multi-dose medication
+                        if (data.required_times > 1) {
+                            const progressBar = medItem.querySelector('.progress-bar');
+                            if (progressBar) {
+                                const newWidth = (data.times_taken / data.required_times * 100) + '%';
+                                progressBar.style.width = newWidth;
+                                progressBar.setAttribute('aria-valuenow', data.times_taken);
+                                
+                                // Update text
+                                const doseText = medItem.querySelector('.small.text-muted .text-success');
+                                if (doseText) {
+                                    doseText.textContent = data.times_taken;
+                                }
+                            }
+                        }
+                        
+                        // If all doses taken for this medication, add a green background
+                        if (data.times_taken >= data.required_times) {
+                            medItem.style.backgroundColor = '#d4edda';
+                            medItem.style.borderColor = '#c3e6cb';
+                            
+                            // Add a completed badge if not already present
+                            if (!medItem.querySelector('.badge.bg-success')) {
+                                const checkDiv = document.createElement('div');
+                                checkDiv.className = 'badge bg-success mt-2';
+                                checkDiv.innerHTML = '<i class="fas fa-check me-1"></i> Complete';
+                                medItem.appendChild(checkDiv);
+                            }
+                        }
+                        
+                        console.log(`Marked ${medName} as taken: ${data.message}`);
+                        
+                        // Check if all medications have been fully taken
+                        const allComplete = Array.from(document.querySelectorAll('.med-reminder-item')).every(item => {
+                            return item.style.backgroundColor === 'rgb(212, 237, 218)'; // #d4edda
+                        });
+                        
+                        if (allComplete) {
+                            // All medications fully taken, close modal after a short delay
+                            setTimeout(() => {
+                                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('medicationReminderModal'));
+                                if (modalInstance) modalInstance.hide();
+                            }, 1000);
+                        }
+                        
+                        // Call the callback if provided
+                        if (typeof callback === 'function') {
+                            callback();
+                        }
+                    } else {
+                        console.error('Error marking medication as taken:', data.message);
+                        if (typeof callback === 'function') {
+                            callback(); // Continue even if there was an error
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking medication as taken:', error);
+                    if (typeof callback === 'function') {
+                        callback(); // Continue even if there was an error
+                    }
+                });
+            }
+            
+            // Function to fetch random myth from API
+            function fetchRandomMyth() {
+                console.log("Attempting to fetch random myth...");
+                // Reset card state before fetching
+                const mythCardInner = document.querySelector('.myth-card-inner');
+                if (mythCardInner) {
+                    mythCardInner.classList.remove('is-flipped'); // Ensure it starts front-facing
+                }
+
+                fetch('/api/myth')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Received myth data:", data);
+
+                        const mythElement = document.getElementById('mythText');
+                        const factElement = document.getElementById('factText');
+                        const mythCardContainer = document.getElementById('mythBusterCard'); // Container for opacity
+
+                        if (!mythElement || !factElement || !mythCardContainer) {
+                            console.error("Myth Buster elements not found!");
+                            return;
+                        }
+
+                        if (data && data.myth && data.fact) {
+                            // Update the myth and fact text
+                            mythElement.textContent = `"${data.myth}"`;
+                            factElement.textContent = data.fact;
+
+                            // Reset opacity for potential fade-in effect (optional)
+                            mythCardContainer.style.opacity = '1'; // Ensure visible
+                            console.log("Myth Buster content updated successfully.");
+                        } else {
+                            console.error("Invalid data received from /api/myth:", data);
+                            // Use fallback text if data is invalid
+                            mythElement.textContent = '"Endometriosis pain is just normal period pain."';
+                            factElement.textContent = 'Endometriosis pain is often severe and can affect daily life. It\'s different from typical menstrual cramps and should be taken seriously.';
+                            mythCardContainer.style.opacity = '1'; // Ensure visible even with error
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching myth:', error);
+                        
+                        const mythElement = document.getElementById('mythText');
+                        const factElement = document.getElementById('factText');
+                        const mythCardContainer = document.getElementById('mythBusterCard');
+                        
+                        if (mythElement && factElement && mythCardContainer) {
+                            // Set default content in case of error
+                            mythElement.textContent = '"Endometriosis pain is just normal period pain."';
+                            factElement.textContent = 'Endometriosis pain is often severe and can affect daily life. It\'s different from typical menstrual cramps and should be taken seriously.';
+                            mythCardContainer.style.opacity = '1'; // Ensure visible even with error
+                        } else {
+                            console.error("Myth Buster elements not found during error handling!");
+                        }
+                    });
+            }
+
+            // Set up continuous scroll for Stories and Testimonials
+            setupContinuousScroll();
+            
+            // Function to set up continuous scrolling for carousels
+            function setupContinuousScroll() {
+                // Clone story cards to create a seamless infinite scroll
+                const storyTrack = document.getElementById('storyTrack');
+                const testimonialTrack = document.querySelector('.testimonial-track');
+                
+                if (storyTrack) {
+                    // Clone each story card and append to end for seamless loop
+                    const cards = storyTrack.querySelectorAll('.story-card');
+                    if (cards.length > 0) {
+                        // Clone each card and append to create a seamless loop
+                        cards.forEach(card => {
+                            const clone = card.cloneNode(true);
+                            storyTrack.appendChild(clone);
+                        });
+                    }
+                    
+                    // Add pause on hover
+            const storyCarousel = document.querySelector('.story-carousel');
+                    if (storyCarousel) {
+                        // Manual navigation with buttons
+                        const prevBtn = storyCarousel.querySelector('.prev-btn');
+                        const nextBtn = storyCarousel.querySelector('.next-btn');
+                        
+                        if (prevBtn && nextBtn) {
+                            // When buttons are clicked, stop animation and apply manual scroll
+                            prevBtn.addEventListener('click', function() {
+                                // Pause the automatic animation
+                                storyTrack.style.animationPlayState = 'paused';
+                                
+                                // Get current transform value
+                                const style = window.getComputedStyle(storyTrack);
+                                const matrix = new WebKitCSSMatrix(style.transform);
+                                let currentTranslateX = matrix.m41;
+                                
+                                // Scroll to previous card (adjust distance based on card width + gap)
+                                const scrollDistance = 360 + 32; // Card width + gap
+                                currentTranslateX += scrollDistance;
+                                
+                                // Apply transform
+                                storyTrack.style.transition = 'transform 0.5s ease';
+                                storyTrack.style.transform = `translateX(${currentTranslateX}px)`;
+                    
+                                // Resume animation after a delay
+                                setTimeout(() => {
+                                    storyTrack.style.transition = '';
+                                    storyTrack.style.transform = '';
+                                    storyTrack.style.animationPlayState = 'running';
+                                }, 2000);
+                            });
+                            
+                            nextBtn.addEventListener('click', function() {
+                                // Pause the automatic animation
+                                storyTrack.style.animationPlayState = 'paused';
+                                
+                                // Get current transform value
+                                const style = window.getComputedStyle(storyTrack);
+                                const matrix = new WebKitCSSMatrix(style.transform);
+                                let currentTranslateX = matrix.m41;
+                                
+                                // Scroll to next card
+                                const scrollDistance = 360 + 32; // Card width + gap
+                                currentTranslateX -= scrollDistance;
+                                
+                                // Apply transform
+                                storyTrack.style.transition = 'transform 0.5s ease';
+                                storyTrack.style.transform = `translateX(${currentTranslateX}px)`;
+                                
+                                // Resume animation after a delay
+                                setTimeout(() => {
+                                    storyTrack.style.transition = '';
+                                    storyTrack.style.transform = '';
+                                    storyTrack.style.animationPlayState = 'running';
+                                }, 2000);
+                            });
+                        }
+                    }
+                }
+                
+                if (testimonialTrack) {
+                    // Clone testimonial cards for seamless loop
+                    const tCards = testimonialTrack.querySelectorAll('.story-card');
+                    if (tCards.length > 0) {
+                        tCards.forEach(card => {
+                            const clone = card.cloneNode(true);
+                            testimonialTrack.appendChild(clone);
+                        });
+                    }
+                    
+                    // Add navigation functionality to testimonial carousel
+                    const testimonialCarousel = document.querySelector('.testimonial-carousel');
+                    if (testimonialCarousel) {
+                        // Manual navigation with buttons
+                        const prevBtn = testimonialCarousel.querySelector('.prev-btn');
+                        const nextBtn = testimonialCarousel.querySelector('.next-btn');
+                        
+                        if (prevBtn && nextBtn) {
+                            // When buttons are clicked, stop animation and apply manual scroll
+                            prevBtn.addEventListener('click', function() {
+                                // Pause the automatic animation
+                                testimonialTrack.style.animationPlayState = 'paused';
+                                
+                                // Get current transform value
+                                const style = window.getComputedStyle(testimonialTrack);
+                                const matrix = new WebKitCSSMatrix(style.transform);
+                                let currentTranslateX = matrix.m41;
+                                
+                                // Scroll to previous card (adjust distance based on card width + gap)
+                                const scrollDistance = 360 + 32; // Card width + gap
+                                currentTranslateX += scrollDistance;
+                                
+                                // Apply transform
+                                testimonialTrack.style.transition = 'transform 0.5s ease';
+                                testimonialTrack.style.transform = `translateX(${currentTranslateX}px)`;
+                    
+                                // Resume animation after a delay
+                                setTimeout(() => {
+                                    testimonialTrack.style.transition = '';
+                                    testimonialTrack.style.transform = '';
+                                    testimonialTrack.style.animationPlayState = 'running';
+                                }, 2000);
+                            });
+                            
+                            nextBtn.addEventListener('click', function() {
+                                // Pause the automatic animation
+                                testimonialTrack.style.animationPlayState = 'paused';
+                                
+                                // Get current transform value
+                                const style = window.getComputedStyle(testimonialTrack);
+                                const matrix = new WebKitCSSMatrix(style.transform);
+                                let currentTranslateX = matrix.m41;
+                                
+                                // Scroll to next card
+                                const scrollDistance = 360 + 32; // Card width + gap
+                                currentTranslateX -= scrollDistance;
+                                
+                                // Apply transform
+                                testimonialTrack.style.transition = 'transform 0.5s ease';
+                                testimonialTrack.style.transform = `translateX(${currentTranslateX}px)`;
+                                
+                                // Resume animation after a delay
+                                setTimeout(() => {
+                                    testimonialTrack.style.transition = '';
+                                    testimonialTrack.style.transform = '';
+                                    testimonialTrack.style.animationPlayState = 'running';
+                                }, 2000);
+                            });
+                        }
+                    }
+                }
+            }
+            
+            // Store base static path for JS use
+            const baseStaticPath = "{{ url_for('static', filename='') }}";
+
+            // Function to add a new story to the carousel
+            function addNewStoryToCarousel(story) {
+                const storyTrack = document.getElementById('storyTrack');
+                if (!storyTrack) return;
+                
+                // Create a new story card
+                const storyCard = document.createElement('div');
+                storyCard.className = 'story-card';
+                
+                // Get avatar path from the story object passed by the backend
+                const avatarPath = story.avatar || 'images/default_avatar.png'; // Use default if missing
+                
+                // Construct the full image URL using the base path and add cache-busting
+                let avatarUrl = baseStaticPath + avatarPath + '?t=' + new Date().getTime();
+                const fallbackAvatarUrl = baseStaticPath + 'images/default_avatar.png';
+
+                // Format the current date if needed (backend provides created_at)
+                const displayDate = story.created_at || new Date().toISOString().split('T')[0];
+                
+                // Create story card HTML
+                storyCard.innerHTML = `
+                    <div class="story-user">
+                        <img src="${avatarUrl}" 
+                             alt="${story.user_first_name || 'Anonymous'}" 
+                             class="story-avatar"
+                             onerror="this.onerror=null; this.src='${fallbackAvatarUrl}';">
+                        <h4>${story.user_first_name || 'Anonymous'}</h4>
+                        <p class="text-muted">${displayDate}</p> 
+                    </div>
+                    <div class="story-content">
+                        <p>"${story.content}"</p>
+                    </div>
+                    <div class="story-footer">
+                        <i class="fas fa-heart text-danger"></i> 
+                        <span>Shared with love</span>
+                    </div>
+                `;
+                
+                // Add the new story card to the beginning of the track
+                if (storyTrack.firstChild) {
+                    storyTrack.insertBefore(storyCard, storyTrack.firstChild);
+                } else {
+                    storyTrack.appendChild(storyCard);
+                }
+                
+                // Highlight the new story
+                storyCard.style.animation = 'highlight 2s ease';
+            }
+            
+            // Handle form submission for story sharing
+            const storyForm = document.getElementById('storyForm');
+            if (storyForm) {
+                storyForm.addEventListener('submit', function(event) {
+                    // Only perform this special handling if JavaScript is enabled
+                    event.preventDefault();
+                    
+                    const shareCheckbox = document.getElementById('share_story');
+                    const storyContent = document.getElementById('story_content').value.trim();
+                    
+                    if (storyContent) {
+                        // Create form data for submission
+                        const formData = new FormData(storyForm);
+                        
+                        // Submit the story via AJAX
+                        fetch('{{ url_for("submit_story") }}', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Clear the form
+                                document.getElementById('story_content').value = '';
+                                
+                                // Show success message
+                                const successMsg = document.getElementById('storySubmitSuccess');
+                                successMsg.style.display = 'block';
+                                
+                                // Hide success message after 5 seconds
+                                setTimeout(() => {
+                                    successMsg.style.display = 'none';
+                                }, 5000);
+                                
+                                // If the story is shared, add it to the stories section immediately
+                                if (shareCheckbox.checked && data.story) {
+                                    addNewStoryToCarousel(data.story);
+                                }
+                            } else {
+                                alert('Error sharing your story. Please try again.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error submitting story:', error);
+                            alert('Error sharing your story. Please try again.');
+                        });
+                    } else {
+                        alert('Please enter your story before submitting.');
+                    }
+                });
+            }
+
+            // Function to add a new testimonial to the carousel
+            function addNewTestimonialToCarousel(testimonial) {
+                const testimonialTrack = document.querySelector('.testimonial-track');
+                if (!testimonialTrack) return;
+                
+                // Create a new testimonial card
+                const testimonialCard = document.createElement('div');
+                testimonialCard.className = 'story-card';
+                
+                // Get avatar path from the testimonial object
+                const avatarPath = testimonial.avatar || 'images/default_avatar.png';
+                
+                // Construct the full image URL using the base path and add cache-busting
+                let avatarUrl = baseStaticPath + avatarPath + '?t=' + new Date().getTime();
+                const fallbackAvatarUrl = baseStaticPath + 'images/default_avatar.png';
+                
+                // Create testimonial card HTML
+                testimonialCard.innerHTML = `
+                    <div class="story-user">
+                        <img src="${avatarUrl}" 
+                             alt="${testimonial.name || 'Anonymous'}" 
+                             class="story-avatar"
+                             onerror="this.onerror=null; this.src='${fallbackAvatarUrl}';">
+                        <h4>${testimonial.name || 'Anonymous'}</h4>
+                        <p class="text-muted testimonial-subtitle">• Testimonial</p>
+                    </div>
+                    <div class="story-content">
+                        <p>"${testimonial.content}"</p>
+                    </div>
+                    <div class="story-rating mb-2">
+                        ${Array(testimonial.rating).fill('<i class="fas fa-star text-warning"></i>').join('')}
+                        ${Array(5 - testimonial.rating).fill('<i class="far fa-star text-warning"></i>').join('')}
+                    </div>
+                `;
+                
+                // Add the new testimonial card to the beginning of the track
+                if (testimonialTrack.firstChild) {
+                    testimonialTrack.insertBefore(testimonialCard, testimonialTrack.firstChild);
+                } else {
+                    testimonialTrack.appendChild(testimonialCard);
+                }
+                
+                // Highlight the new testimonial
+                testimonialCard.style.animation = 'highlight 2s ease';
+            }
+
+            // Handle form submission for testimonial
+            const testimonialForm = document.querySelector('#testimonialModal form');
+            if (testimonialForm) {
+                testimonialForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    
+                    const formData = new FormData(testimonialForm);
+                    
+                    fetch('{{ url_for("submit_testimonial") }}', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Close the modal
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('testimonialModal'));
+                            modal.hide();
+                            
+                            // Clear the form
+                            testimonialForm.reset();
+                            
+                            // Add the new testimonial to the carousel
+                            if (data.testimonial) {
+                                addNewTestimonialToCarousel(data.testimonial);
+                            }
+                            
+                            // Show success message
+                            alert('Thank you for your testimonial!');
+                        } else {
+                            alert('Error submitting your testimonial. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error submitting testimonial:', error);
+                        alert('Error submitting your testimonial. Please try again.');
+                    });
+                });
+            }
+        });
+    </script>
+    
+    <!-- Phase Motivation Modal Script -->
+    <script id="phaseMotivationScript" 
+        data-has-cycle-info="{% if cycle_info %}true{% else %}false{% endif %}"
+        data-current-phase="{% if cycle_info and cycle_info.current_phase %}{{ cycle_info.current_phase }}{% else %}Unknown{% endif %}">
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get data from script tag attributes to avoid Jinja2/JS conflicts
+            const scriptTag = document.getElementById('phaseMotivationScript');
+            const hasCycleInfo = scriptTag.getAttribute('data-has-cycle-info') === 'true';
+            const currentPhase = scriptTag.getAttribute('data-current-phase');
+            
+            // Function to load and show the phase motivation content
+            function loadAndShowPhaseMotivation() {
+                // First show the modal with placeholder content
+                var phaseModal = new bootstrap.Modal(document.getElementById('phaseMotivationModal'));
+                phaseModal.show();
+                
+                console.log('Fetching phase content for:', currentPhase);
+                
+                // Clear any existing content
+                document.getElementById('phaseQuoteText').innerHTML = 'Loading your personalized insight...';
+                document.getElementById('phaseTipsList').innerHTML = '<li>Loading personalized tips for your current phase...</li>';
+                
+                // Add a timestamp to prevent caching and ensure fresh content every time
+                const timestamp = new Date().getTime();
+                
+                fetch('/get_phase_motivation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    },
+                    body: JSON.stringify({ 
+                        phase: currentPhase,
+                        timestamp: timestamp // Add timestamp to ensure fresh content
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log('Successfully received phase content');
+                        
+                        // Update the quote with proper quotes and formatting
+                        const quoteElement = document.getElementById('phaseQuoteText');
+                        quoteElement.innerHTML = data.quote;
+                        quoteElement.style.display = 'block'; // Ensure it's visible
+                        
+                        // Clear and update the tips
+                        const tipsList = document.getElementById('phaseTipsList');
+                        tipsList.innerHTML = '';
+                        
+                        data.tips.forEach(tip => {
+                            const li = document.createElement('li');
+                            li.textContent = tip;
+                            tipsList.appendChild(li);
+                        });
+                    } else {
+                        console.error('Error fetching phase content:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+            
+            if (hasCycleInfo) {
+                // Check if this is a new page load or refresh by using a URL parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const fromLogin = urlParams.has('from_login') && urlParams.get('from_login') === 'true';
+                
+                // Always show on initial page load
+                const initialLoad = !localStorage.getItem('hasVisitedBefore');
+                
+                // If this is the first load of the app or coming from login, show the modal
+                if (initialLoad || fromLogin) {
+                    // Set a short delay to ensure the page is fully loaded
+                    setTimeout(function() {
+                        loadAndShowPhaseMotivation();
+                        // Mark that the user has visited before
+                        localStorage.setItem('hasVisitedBefore', 'true');
+                    }, 1500);
+                }
+                
+                // Handle "Don't show today" checkbox
+                const dontShowCheckbox = document.getElementById('dontShowToday');
+                if (dontShowCheckbox) {
+                    dontShowCheckbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            localStorage.setItem('phaseMotivationLastShown', new Date().toDateString());
+                        }
+                    });
+                }
+                
+                // Add click handler for the help button in navbar
+                const helpButton = document.querySelector('a.nav-link[href="#"] i.fas.fa-question-circle').parentElement;
+                if (helpButton) {
+                    helpButton.addEventListener('click', function(e) {
+                        e.preventDefault(); // Prevent default behavior
+                        loadAndShowPhaseMotivation(); // This will now fetch fresh content
+                    });
+                }
+            }
+        });
+    </script>
+
+    <!-- Story Carousel JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Story carousel functionality
+            const storyTrack = document.querySelector('.story-track');
+            const prevBtn = document.querySelector('.prev-btn');
+            const nextBtn = document.querySelector('.next-btn');
+            
+            if (storyTrack && prevBtn && nextBtn) {
+                const slideWidth = 320; // Width of slide + gap
+                let position = 0;
+                const maxSlides = document.querySelectorAll('.story-slide').length;
+                const slidesPerView = window.innerWidth < 768 ? 1 : 3;
+                const maxPosition = Math.max(0, (maxSlides - slidesPerView) * slideWidth);
+                
+                prevBtn.addEventListener('click', function() {
+                    position = Math.max(position - slideWidth, 0);
+                    updateSlidePosition();
+                });
+                
+                nextBtn.addEventListener('click', function() {
+                    position = Math.min(position + slideWidth, maxPosition);
+                    updateSlidePosition();
+                });
+                
+                function updateSlidePosition() {
+                    storyTrack.style.transform = `translateX(-${position}px)`;
+                    prevBtn.disabled = position === 0;
+                    nextBtn.disabled = position === maxPosition;
+                }
+                
+                // Initialize button states
+                updateSlidePosition();
+                
+                // Handle window resize
+                window.addEventListener('resize', function() {
+                    const newSlidesPerView = window.innerWidth < 768 ? 1 : 3;
+                    const newMaxPosition = Math.max(0, (maxSlides - newSlidesPerView) * slideWidth);
+                    position = Math.min(position, newMaxPosition);
+                    updateSlidePosition();
+                    });
+            }
+        });
+    </script>
+{% endblock %} 
+
+{% block styles %}
+{{ super() }}
+<style>
+/* Add specific styles for Myth Buster Flip Card */
+.myth-card {
+    background-color: transparent;
+    perspective: 1000px; /* Perspective for 3D effect */
+    min-height: 150px; /* Ensure card has height */
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.myth-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 150px; /* Match parent */
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 10px;
+}
+
+/* Flip effect on hover */
+.myth-card:hover .myth-card-inner {
+    transform: rotateY(180deg);
+}
+
+.myth-front,
+.myth-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    min-height: 150px; /* Match parent */
+    -webkit-backface-visibility: hidden; /* Safari */
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.myth-front {
+    background-color: #f8f9fa; /* Light background for the front */
+    color: #333;
+}
+
+.myth-back {
+    background-color: #e3f2fd; /* Light blue background for the back */
+    color: #1976d2;
+    transform: rotateY(180deg);
+}
+
+.myth-front h5, .myth-back h5 {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.myth-front p, .myth-back p {
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+/* Styles for sections below Myth Buster */
+section {
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+}
+
+section:nth-of-type(odd) {
+    /* Optional: alternating background for sections */
+    /* background-color: #f8f9fa; */ 
+}
+
+.section-title {
+    text-align: center;
+    margin-bottom: 3rem;
+    font-size: 2rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.section-description {
+    text-align: center;
+    margin-bottom: 3rem;
+    color: #6c757d;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Service Grid */
+.service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.service-box {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%; 
+    display: flex;
+    flex-direction: column;
+    max-width: 360px;
+    min-height: 360px;
+    margin: 0 auto;
+    justify-content: space-between;
+}
+
+.service-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.service-box i {
+    font-size: 2.5rem;
+    color: #1a8cff; /* Match primary color */
+    margin-bottom: 1rem;
+}
+
+.service-box h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.service-count {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #007bff;
+    margin: 0.5rem 0;
+}
+
+.service-box p {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+/* Footer Styling */
+.footer {
+    background-color: #343a40;
+    color: #adb5bd;
+    padding-top: 3rem;
+    padding-bottom: 2rem;
+    margin-top: 4rem; 
+}
+
+.footer h5 {
+    color: #ffffff;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.footer ul {
+    padding-left: 0;
+}
+
+.footer li {
+    margin-bottom: 0.5rem;
+}
+
+.footer a {
+    color: #adb5bd;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer a:hover {
+    color: #ffffff;
+}
+
+.footer .social-links a {
+    font-size: 1.3rem;
+}
+
+.footer hr {
+    border-top: 1px solid #495057;
+}
+
+.footer p {
+    font-size: 0.9rem;
+}
+
+/* Styles to match the provided image for Testimonials */
+.testimonial-section {
+    background-color: #f8f9fa; /* Light background like in image */
+}
+
+.testimonial-card {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    padding: 25px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%; /* Ensure cards in a row have same height */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Push content and rating down */
+}
+
+.testimonial-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+.testimonial-card img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 15px auto;
+    object-fit: cover;
+    border: 3px solid #f0f6ff;
+}
+
+.testimonial-card h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.testimonial-card .text-muted {
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.testimonial-card p:not(.text-muted) {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    flex-grow: 1;
+}
+
+.star-rating {
+    margin-top: auto;
+}
+
+/* Styles to match the provided image for Benefits Section */
+.benefits-title {
+    color: #007bff;
+    font-weight: bold;
+    margin-bottom: 3rem;
+}
+
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.benefit-card {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.benefit-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+.benefit-card i {
+    font-size: 2.5rem;
+    color: #007bff;
+    background-color: #e7f3ff;
+    border-radius: 50%;
+    padding: 15px;
+    width: 70px;
+    height: 70px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.benefit-card h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+}
+
+.benefit-card p {
+    font-size: 0.9rem;
+    color: #6c757d;
+    line-height: 1.5;
+}
+
+/* Adjust story and testimonial tracks for consistent sizing */
+.story-track, .testimonial-track {
+    display: flex;
+    gap: 2rem; /* Increased gap between cards */
+    padding: 1rem; /* Added padding for shadow visibility */
+    animation: continuous-scroll 30s linear infinite;
+    will-change: transform;
+}
+
+.story-carousel, .testimonial-carousel {
+    overflow: hidden; /* Hide overflow for controlled scroll */
+    margin-bottom: 3rem; /* Add more space below carousel */
+    position: relative; /* For positioning navigation buttons */
+    padding: 0 1rem; /* Add padding for cards to be fully visible */
+}
+
+.story-carousel:hover .story-track, 
+.testimonial-carousel:hover .testimonial-track {
+    animation-play-state: paused;
+}
+
+@keyframes continuous-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-360px * 3 - 6rem)); } /* 3 cards + gaps */
+}
+
+/* For testimonials, slightly different speed */
+.testimonial-track {
+    animation-duration: 35s;
+}
+
+/* Make sure all cards are duplicated to create seamless scroll */
+.story-card, .testimonial-card {
+    flex-shrink: 0;
+}
+
+/* Larger card sizes */
+.service-box, 
+.benefit-card { /* Removed story-card, testimonial-card from this group for now */
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%; 
+    display: flex;
+    flex-direction: column;
+    max-width: 360px;
+    min-height: 360px;
+    margin: 0 auto;
+    justify-content: space-between;
+}
+
+/* Specific styles for story-card to ensure fixed height */
+.story-card {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex; /* Keep flex */
+    flex-direction: column; /* Keep column direction */
+    max-width: 360px;
+    width: 360px; /* Added explicit width to match max-width */
+    min-height: 360px; /* Keep min-height */
+    height: 400px; /* Set fixed height */
+    margin: 0 auto;
+    /* Removed justify-content: space-between; */
+    flex-shrink: 0; /* Keep this for carousel */
+}
+
+/* Larger avatar images */
+.story-avatar, 
+.testimonial-card img { /* Keep testimonial-card img for potential modals? */
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 3px solid #f0f6ff;
+}
+
+/* Story navigation buttons for manual control */
+.story-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.8);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    z-index: 5;
+    transition: all 0.2s ease;
+}
+
+.story-nav-btn:hover {
+    background: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.story-nav-btn.prev-btn {
+    left: 10px;
+}
+
+.story-nav-btn.next-btn {
+    right: 10px;
+}
+
+/* Content sizing constraints */
+.story-content p, .testimonial-card p:not(.text-muted) {
+    max-height: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    font-style: italic;
+    line-height: 1.5;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+}
+
+/* Story footer styling */
+.story-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+    color: #888;
+}
+
+.story-footer i.fa-heart {
+    color: #e74c3c;
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+/* Story user section styling */
+.story-user {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.story-user h4 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.story-user p.text-muted {
+    font-size: 0.85rem;
+}
+
+/* For scrolling animation */
+@keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-360px * 3)); }
+}
+
+/* Only apply animation when not being interacted with */
+.story-carousel:not(.scrolling) .story-track {
+    transition: transform 0.5s ease-in-out;
+}
+
+.testimonial-carousel:not(.scrolling) .testimonial-track {
+    transition: transform 0.5s ease-in-out;
+}
+
+/* Media query adjustments */
+@media (max-width: 768px) {
+    .service-box, .story-card, .testimonial-card, .benefit-card {
+    max-width: 300px;
+        min-height: 320px;
+        padding: 1.5rem;
+    }
+    
+    .story-avatar, .testimonial-card img {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+@keyframes highlight {
+    0% { box-shadow: 0 0 0 rgba(0, 123, 255, 0); }
+    50% { box-shadow: 0 0 20px rgba(0, 123, 255, 0.5); }
+    100% { box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); }
+}
+</style>
+{% endblock %}

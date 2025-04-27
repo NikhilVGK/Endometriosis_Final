@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Assessment | EndoMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='response.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/add_assessment.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">EndoMetrics</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/my_record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ session.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-clipboard-check me-2"></i>Assessment</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="assessment-form-container">
+            <h1 class="text-center mb-4">Add New Assessment</h1>
+            <p class="text-center text-muted mb-4">Track your symptoms and pain levels to help monitor your condition over time.</p>
+            
+            <form action="{{ url_for('add_assessment') }}" method="POST">
+                <!-- Pain Assessment Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-heartbeat me-2"></i>Pain Assessment</h3>
+                    
+                    <div class="mb-3">
+                        <label for="assessment_date" class="form-label">Assessment Date</label>
+                        <input type="date" class="form-control" id="assessment_date" name="assessment_date" 
+                               value="{{ selected_date or today_date }}" 
+                               max="{{ today_date }}">
+                        <div class="form-text">Select the date for this assessment entry</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assessment_hour" class="form-label">Time of Day</label>
+                        <select class="form-select" id="assessment_hour" name="assessment_hour">
+                            {% for hour in range(0, 24) %}
+                                <option value="{{ hour }}" {% if selected_hour == hour %}selected{% endif %}>
+                                    {{ '%02d' % hour }}:00 {{ 'AM' if hour < 12 else 'PM' }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select the hour of day when these symptoms were experienced</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pain_level" class="form-label fw-bold">Pain Level (1-10)</label>
+                        <div class="pain-scale">
+                            {% for i in range(1, 11) %}
+                                <div class="pain-scale-item" data-value="{{ i }}" onclick="selectPainLevel(this)">
+                                    {{ i }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="pain_level" id="pain_level" value="5" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bmi" class="form-label fw-bold">BMI</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="bmi" name="bmi" step="0.1" placeholder="Enter your BMI" required>
+                            <button type="button" class="btn btn-outline-primary" id="calculateBmiBtn">
+                                <i class="fas fa-calculator"></i> Calculate
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Don't know your BMI? Click Calculate.</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pain_location" class="form-label fw-bold">Pain Location</label>
+                        <input type="text" class="form-control" id="pain_location" name="pain_location" 
+                               placeholder="Where do you feel pain? (e.g., lower abdomen, back, etc.)">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="pain_description" class="form-label">Pain Description</label>
+                        <textarea class="form-control" id="pain_description" name="pain_description" rows="3" placeholder="Describe your pain (sharp, dull, cramping, etc.)"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Symptoms Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-clipboard-list me-2"></i>Symptoms</h3>
+                    
+                    <div class="mb-3">
+                        <label class="form-label d-block">Primary Symptoms</label>
+                        <div class="symptom-checkbox-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="menstrual_irregularity" name="menstrual_irregularity">
+                                <label class="form-check-label" for="menstrual_irregularity">
+                                    Menstrual Irregularity
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hormone_abnormality" name="hormone_abnormality">
+                                <label class="form-check-label" for="hormone_abnormality">
+                                    Hormone Abnormality
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="infertility" name="infertility">
+                                <label class="form-check-label" for="infertility">
+                                    Infertility Issues
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label d-block">Additional Symptoms</label>
+                        <div class="symptom-checkbox-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="has_bloating" name="has_bloating">
+                                <label class="form-check-label" for="has_bloating">
+                                    Bloating
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="has_fatigue" name="has_fatigue">
+                                <label class="form-check-label" for="has_fatigue">
+                                    Fatigue
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="has_nausea" name="has_nausea">
+                                <label class="form-check-label" for="has_nausea">
+                                    Nausea
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="has_headache" name="has_headache">
+                                <label class="form-check-label" for="has_headache">
+                                    Headache
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="other_symptoms" class="form-label">Other Symptoms</label>
+                        <textarea class="form-control" id="other_symptoms" name="other_symptoms" rows="2" placeholder="Describe any other symptoms you're experiencing"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Medications Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-pills me-2"></i>Medications</h3>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Medications Taken</label>
+                        {% if medications %}
+                            <div class="mb-3">
+                                {% for medication in medications %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="med_{{ medication.id }}" name="medications" value="{{ medication.id }}">
+                                        <label class="form-check-label" for="med_{{ medication.id }}">
+                                            {{ medication.name }} ({{ medication.dosage }})
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No medications added yet. <a href="{{ url_for('add_medication') }}">Add medications</a> to track them here.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Notes Section -->
+                <div class="form-section">
+                    <h3 class="section-title"><i class="fas fa-sticky-note me-2"></i>Notes</h3>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Additional Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Add any additional information about your symptoms or condition"></textarea>
+                    </div>
+                </div>
+                
+                <!-- Submit Button -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('my_record') }}" class="btn btn-danger">
+                        <i class="fas fa-times me-2"></i>Close
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="fas fa-save me-2"></i>Save Assessment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2023 EndoMetrics. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- BMI Calculator Overlay -->
+    <div class="modal fade" id="bmiCalculatorModal" tabindex="-1" aria-labelledby="bmiCalculatorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bmiCalculatorModalLabel">BMI Calculator</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="heightCm" class="form-label">Height (cm)</label>
+                        <input type="number" class="form-control" id="heightCm" min="50" max="250" placeholder="Enter your height">
+                    </div>
+                    <div class="mb-3">
+                        <label for="weightKg" class="form-label">Weight (kg)</label>
+                        <input type="number" class="form-control" id="weightKg" min="20" max="300" placeholder="Enter your weight">
+                    </div>
+                    <div class="mt-4 text-center d-none" id="bmiResult">
+                        <div class="p-3 rounded mb-3">
+                            <h4>Your BMI is: <span id="bmiValue" class="text-primary">0</span></h4>
+                            <div id="bmiCategory" class="mt-2 p-2 rounded"></div>
+                        </div>
+                        <div class="bmi-scale mt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Underweight</span>
+                                <span>Normal</span>
+                                <span>Overweight</span>
+                                <span>Obese</span>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 18.5%" aria-valuenow="18.5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>&lt;18.5</small>
+                                </div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 6.5%" aria-valuenow="6.5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>18.5-25</small>
+                                </div>
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: 5%" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>25-30</small>
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">
+                                    <small>&gt;30</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="calculateBmiInModal">Calculate</button>
+                    <button type="button" class="btn btn-success d-none" id="useBmiValue">Use This Value</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Pain scale selection
+        function selectPainLevel(element) {
+            const painLevelInput = document.getElementById('pain_level');
+            const allLevels = document.querySelectorAll('.pain-scale-item');
+            
+            // Remove active class from all elements
+            allLevels.forEach(level => level.classList.remove('active'));
+            
+            // Add active class to selected element
+            element.classList.add('active');
+            
+            // Update hidden input value
+            painLevelInput.value = element.getAttribute('data-value');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add active class to default pain level (5)
+            const defaultPainLevel = document.querySelector('.pain-scale-item[data-value="5"]');
+            if (defaultPainLevel) {
+                defaultPainLevel.classList.add('active');
+            }
+            
+            // BMI Calculator
+            const calculateBmiBtn = document.getElementById('calculateBmiBtn');
+            const bmiCalculatorModal = new bootstrap.Modal(document.getElementById('bmiCalculatorModal'));
+            const calculateBmiInModal = document.getElementById('calculateBmiInModal');
+            const useBmiValue = document.getElementById('useBmiValue');
+            const bmiResult = document.getElementById('bmiResult');
+            const bmiValue = document.getElementById('bmiValue');
+            const bmiCategory = document.getElementById('bmiCategory');
+            const heightCm = document.getElementById('heightCm');
+            const weightKg = document.getElementById('weightKg');
+            const bmiInput = document.getElementById('bmi');
+            
+            // Open BMI calculator modal
+            calculateBmiBtn.addEventListener('click', function() {
+                bmiCalculatorModal.show();
+            });
+            
+            // Calculate BMI in modal
+            calculateBmiInModal.addEventListener('click', function() {
+                const height = parseFloat(heightCm.value) / 100; // Convert cm to meters
+                const weight = parseFloat(weightKg.value);
+                
+                if (!height || !weight || height <= 0 || weight <= 0) {
+                    alert('Please enter valid height and weight values.');
+                    return;
+                }
+                
+                const bmi = weight / (height * height);
+                bmiValue.textContent = bmi.toFixed(2);
+                
+                // Show result and Use This Value button
+                bmiResult.classList.remove('d-none');
+                useBmiValue.classList.remove('d-none');
+                
+                // Set BMI category and color
+                let category, colorClass;
+                if (bmi < 18.5) {
+                    category = "Underweight";
+                    colorClass = "bg-info text-white";
+                } else if (bmi < 25) {
+                    category = "Normal weight";
+                    colorClass = "bg-success text-white";
+                } else if (bmi < 30) {
+                    category = "Overweight";
+                    colorClass = "bg-warning text-dark";
+                } else {
+                    category = "Obese";
+                    colorClass = "bg-danger text-white";
+                }
+                
+                bmiCategory.textContent = category;
+                bmiCategory.className = 'mt-2 p-2 rounded ' + colorClass;
+            });
+            
+            // Use calculated BMI value
+            useBmiValue.addEventListener('click', function() {
+                bmiInput.value = bmiValue.textContent;
+                bmiCalculatorModal.hide();
+            });
+        });
+    </script>
+</body>
+</html> 

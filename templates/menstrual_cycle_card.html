@@ -1,0 +1,1271 @@
+{% if cycle_info %}
+<div class="card mb-4 cycle-tracker-card">
+    <div class="card-header bg-primary-light text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Menstrual Cycle Tracker</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="phase-indicator mb-4">
+                    <h6>Current Phase</h6>
+                    <div class="phase-badge {{ cycle_info.current_phase | lower | replace(' ', '-') }}">
+                        <i class="phase-icon fas 
+                            {% if cycle_info.current_phase == 'Menstrual Phase' %}fa-tint
+                            {% elif cycle_info.current_phase == 'Follicular Phase' %}fa-seedling
+                            {% elif cycle_info.current_phase == 'Ovulation Phase' %}fa-egg
+                            {% elif cycle_info.current_phase == 'Luteal Phase' %}fa-moon
+                            {% endif %}"></i>
+                        <span>{{ cycle_info.current_phase }}</span>
+                    </div>
+                    <div class="phase-info">
+                        {% if cycle_info.current_phase == 'Menstrual Phase' %}
+                            <p><small>Your period is happening now. Self-care is important during this time.</small></p>
+                        {% elif cycle_info.current_phase == 'Follicular Phase' %}
+                            <p><small>Your body is preparing for ovulation. Energy levels may rise.</small></p>
+                        {% elif cycle_info.current_phase == 'Ovulation Phase' %}
+                            <p><small>This is your most fertile day. You may notice changes in discharge and mood.</small></p>
+                        {% elif cycle_info.current_phase == 'Luteal Phase' %}
+                            <p><small>Your body is preparing for either pregnancy or menstruation. You may experience PMS symptoms.</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="next-phase-indicator">
+                    <h6>Next Phase</h6>
+                    <div class="phase-badge upcoming {% if cycle_info.current_phase == 'Menstrual Phase' %}menstrual-phase{% else %}{{ cycle_info.next_phase | lower | replace(' ', '-') }}{% endif %}">
+                        <i class="phase-icon fas 
+                            {% if cycle_info.next_phase == 'Menstrual Phase' %}fa-tint
+                            {% elif cycle_info.next_phase == 'Follicular Phase' %}fa-seedling
+                            {% elif cycle_info.next_phase == 'Ovulation Phase' %}fa-egg
+                            {% elif cycle_info.next_phase == 'Luteal Phase' %}fa-moon
+                            {% endif %}"></i>
+                        <span>
+                            {% if cycle_info.current_phase == 'Menstrual Phase' %}
+                                Menstrual Phase (Day {{ cycle_info.days_in_phase }})
+                            {% else %}
+                                {{ cycle_info.next_phase }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if cycle_info.next_phase_date %}
+                        <p><small>Expected on {{ cycle_info.next_phase_date.strftime('%B %d, %Y') }}</small></p>
+                        
+                        {% set today = cycle_info.today_date %}
+                        {% set days_until = (cycle_info.next_phase_date - today).days %}
+                        {% if days_until >= 0 %}
+                            <div class="countdown-badge">
+                                <i class="fas fa-hourglass-half"></i> 
+                                <span>{{ days_until }} day{% if days_until != 1 %}s{% endif %} away</span>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                
+                <!-- Typical Symptoms Chart -->
+                <div class="symptom-chart-container mt-4">
+                    <h6 class="mb-3">Typical Symptom Intensity by Phase</h6>
+                    <div class="symptom-chart">
+                        <div class="symptom-row">
+                            <div class="symptom-label">Pain</div>
+                            <div class="symptom-data">
+                                <div class="intensity-bars">
+                                    <div class="intensity-bar menstrual" style="width: 90%"></div>
+                                    <div class="intensity-bar follicular" style="width: 30%"></div>
+                                    <div class="intensity-bar ovulation" style="width: 40%"></div>
+                                    <div class="intensity-bar luteal" style="width: 70%"></div>
+                                </div>
+                                <div class="intensity-percentages">
+                                    <span class="percentage">90%</span>
+                                    <span class="percentage">30%</span>
+                                    <span class="percentage">40%</span>
+                                    <span class="percentage">70%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="symptom-row">
+                            <div class="symptom-label">Energy</div>
+                            <div class="symptom-data">
+                                <div class="intensity-bars">
+                                    <div class="intensity-bar menstrual" style="width: 30%"></div>
+                                    <div class="intensity-bar follicular" style="width: 80%"></div>
+                                    <div class="intensity-bar ovulation" style="width: 90%"></div>
+                                    <div class="intensity-bar luteal" style="width: 50%"></div>
+                                </div>
+                                <div class="intensity-percentages">
+                                    <span class="percentage">30%</span>
+                                    <span class="percentage">80%</span>
+                                    <span class="percentage">90%</span>
+                                    <span class="percentage">50%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="symptom-row">
+                            <div class="symptom-label">Mood</div>
+                            <div class="symptom-data">
+                                <div class="intensity-bars">
+                                    <div class="intensity-bar menstrual" style="width: 40%"></div>
+                                    <div class="intensity-bar follicular" style="width: 75%"></div>
+                                    <div class="intensity-bar ovulation" style="width: 85%"></div>
+                                    <div class="intensity-bar luteal" style="width: 35%"></div>
+                                </div>
+                                <div class="intensity-percentages">
+                                    <span class="percentage">40%</span>
+                                    <span class="percentage">75%</span>
+                                    <span class="percentage">85%</span>
+                                    <span class="percentage">35%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="symptom-row">
+                            <div class="symptom-label">Bloating</div>
+                            <div class="symptom-data">
+                                <div class="intensity-bars">
+                                    <div class="intensity-bar menstrual" style="width: 80%"></div>
+                                    <div class="intensity-bar follicular" style="width: 20%"></div>
+                                    <div class="intensity-bar ovulation" style="width: 30%"></div>
+                                    <div class="intensity-bar luteal" style="width: 85%"></div>
+                                </div>
+                                <div class="intensity-percentages">
+                                    <span class="percentage">80%</span>
+                                    <span class="percentage">20%</span>
+                                    <span class="percentage">30%</span>
+                                    <span class="percentage">85%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="phase-legend">
+                            <div class="legend-item">
+                                <div class="legend-color menstrual"></div>
+                                <div class="legend-label">Menstrual</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color follicular"></div>
+                                <div class="legend-label">Follicular</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color ovulation"></div>
+                                <div class="legend-label">Ovulation</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color luteal"></div>
+                                <div class="legend-label">Luteal</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <!-- Hormone Level Chart -->
+                <div class="hormone-chart-container mb-4">
+                    <h6 class="mb-2">Hormone Levels Throughout Your Cycle</h6>
+                    <div class="hormone-chart">
+                        <canvas id="hormoneChart" width="100%" height="200"></canvas>
+                        <div class="chart-phase-markers">
+                            <div class="phase-marker menstrual" style="left: 0%; width: 18%;" data-bs-toggle="tooltip" title="Menstrual Phase"></div>
+                            <div class="phase-marker follicular" style="left: 18%; width: 32%;" data-bs-toggle="tooltip" title="Follicular Phase"></div>
+                            <div class="phase-marker ovulation" style="left: 50%; width: 4%;" data-bs-toggle="tooltip" title="Ovulation"></div>
+                            <div class="phase-marker luteal" style="left: 54%; width: 46%;" data-bs-toggle="tooltip" title="Luteal Phase"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cycle-visualization mb-4">
+                    <div class="cycle-circle-container">
+                        <div class="cycle-circle">
+                            <div class="phase-segment menstrual" data-bs-toggle="tooltip" title="Menstrual Phase: Day 1-{{ cycle_info.period_duration }}"></div>
+                            <div class="phase-segment follicular" data-bs-toggle="tooltip" title="Follicular Phase: Day {{ cycle_info.period_duration+1 }}-13"></div>
+                            <div class="phase-segment ovulation" data-bs-toggle="tooltip" title="Ovulation Phase: Day 14"></div>
+                            <div class="phase-segment luteal" data-bs-toggle="tooltip" title="Luteal Phase: Day 15-28"></div>
+                            <div class="cycle-center">
+                                <span>28</span>
+                                <small>days</small>
+                            </div>
+                            
+                            {% set current_day = (cycle_info.today_date - cycle_info.last_period_start).days %}
+                            {% if current_day >= 0 and current_day <= cycle_info.cycle_length %}
+                                {% set rotation = (current_day / cycle_info.cycle_length * 360) %}
+                                <div class="cycle-marker" style="transform: rotate({{ rotation }}deg)"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="cycle-info">
+                    <h6>Cycle Information</h6>
+                    <ul class="list-unstyled cycle-details">
+                        <li>
+                            <i class="fas fa-calendar-day text-primary"></i>
+                            <span>Last Period: <strong>{{ cycle_info.last_period_start.strftime('%B %d, %Y') }}</strong></span>
+                        </li>
+                        <li>
+                            <i class="fas fa-sync-alt text-primary"></i>
+                            <span>Cycle Length: <strong>{{ cycle_info.cycle_length }} days</strong></span>
+                        </li>
+                        <li>
+                            <i class="fas fa-clock text-primary"></i>
+                            <span>Period Duration: <strong>{{ cycle_info.period_duration }} days</strong></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateCycleModal">
+            <i class="fas fa-edit me-2"></i>Update Cycle Information
+        </button>
+        <button type="button" class="btn btn-outline-primary ms-2" id="cycleInfoBtn" data-bs-toggle="tooltip" title="Learn about menstrual cycle phases">
+            <i class="fas fa-info-circle me-1"></i>Learn More
+        </button>
+    </div>
+</div>
+
+<!-- Cycle Info Modal -->
+<div class="modal fade" id="cycleInfoModal" tabindex="-1" aria-labelledby="cycleInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cycleInfoModalLabel">Understanding Your Menstrual Cycle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-2">
+                <!-- First row of phase cards -->
+                <div class="row mb-3">
+                    <div class="col-md-6 p-2">
+                        <div class="phase-compact-card menstrual-phase-card">
+                            <div class="phase-compact-header">
+                                <i class="fas fa-tint"></i>
+                                <h5>Menstrual Phase</h5>
+                                <span class="phase-days">Days 1-{{ cycle_info.period_duration if cycle_info else '5' }}</span>
+                            </div>
+                            <div class="phase-compact-body">
+                                <h6>What's Happening</h6>
+                                <p>The cycle begins with menstruation - your body is shedding the uterine lining that built up in preparation for pregnancy.</p>
+                                
+                                <h6>Body Changes</h6>
+                                <ul class="compact-list">
+                                    <li>Hormone levels (estrogen and progesterone) are low</li>
+                                    <li>Uterine lining is shed through the vagina</li>
+                                    <li>Body temperature is lower</li>
+                                </ul>
+                                
+                                <h6>Common Symptoms</h6>
+                                <ul class="compact-list">
+                                    <li>Menstrual cramps (dysmenorrhea)</li>
+                                    <li>Fatigue and low energy</li>
+                                    <li>Bloating and water retention</li>
+                                    <li>Lower back pain and headaches</li>
+                                    <li>Mood changes</li>
+                                </ul>
+                                
+                                <h6>Endometriosis Connection</h6>
+                                <p>For many with endometriosis, this phase brings intensified pain as the displaced endometrial tissue also responds to hormonal signals and bleeds, causing inflammation.</p>
+                                
+                                <h6>Self-Care Tips</h6>
+                                <ul class="compact-list">
+                                    <li>Apply heat to abdomen to relieve cramps</li>
+                                    <li>Stay hydrated and avoid excessive salt</li>
+                                    <li>Take recommended pain relievers</li>
+                                    <li>Gentle exercise like walking or yoga</li>
+                                    <li>Get extra rest when needed</li>
+                                    <li>Anti-inflammatory foods may help reduce symptoms</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 p-2">
+                        <div class="phase-compact-card follicular-phase-card">
+                            <div class="phase-compact-header">
+                                <i class="fas fa-seedling"></i>
+                                <h5>Follicular Phase</h5>
+                                <span class="phase-days">Days {{ (cycle_info.period_duration+1) if cycle_info else '6' }}-13</span>
+                            </div>
+                            <div class="phase-compact-body">
+                                <h6>What's Happening</h6>
+                                <p>After menstruation ends, your body prepares for potential pregnancy. Follicles (small sacs containing eggs) develop in your ovaries.</p>
+                                
+                                <h6>Body Changes</h6>
+                                <ul class="compact-list">
+                                    <li>FSH (follicle-stimulating hormone) rises</li>
+                                    <li>Estrogen levels begin to rise</li>
+                                    <li>Uterine lining starts rebuilding</li>
+                                    <li>One dominant follicle continues developing</li>
+                                </ul>
+                                
+                                <h6>Common Experiences</h6>
+                                <ul class="compact-list">
+                                    <li>Increased energy levels</li>
+                                    <li>Improved mood and concentration</li>
+                                    <li>Skin clarity often improves</li>
+                                    <li>Gradually increasing cervical mucus</li>
+                                    <li>Higher cognitive function</li>
+                                </ul>
+                                
+                                <h6>Endometriosis Connection</h6>
+                                <p>Many people with endometriosis report symptom relief during this phase as inflammation decreases and estrogen helps restore energy levels.</p>
+                                
+                                <h6>Optimal Activities</h6>
+                                <ul class="compact-list">
+                                    <li>Great time for starting new projects</li>
+                                    <li>Physical activity and strength training</li>
+                                    <li>Social events and important meetings</li>
+                                    <li>Challenging mental tasks</li>
+                                    <li>Creative endeavors</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Second row of phase cards -->
+                <div class="row">
+                    <div class="col-md-6 p-2">
+                        <div class="phase-compact-card ovulation-phase-card">
+                            <div class="phase-compact-header">
+                                <i class="fas fa-egg"></i>
+                                <h5>Ovulation Phase</h5>
+                                <span class="phase-days">Day 14</span>
+                            </div>
+                            <div class="phase-compact-body">
+                                <h6>What's Happening</h6>
+                                <p>Ovulation is triggered by a surge in luteinizing hormone (LH). The mature egg is released from the ovary and begins traveling down the fallopian tube.</p>
+                                
+                                <h6>Body Changes</h6>
+                                <ul class="compact-list">
+                                    <li>LH surge triggers egg release</li>
+                                    <li>Estrogen peaks then drops slightly</li>
+                                    <li>Body temperature rises slightly (0.5°F)</li>
+                                    <li>Cervical mucus becomes clear and stretchy</li>
+                                </ul>
+                                
+                                <h6>Common Signs</h6>
+                                <ul class="compact-list">
+                                    <li>Mittelschmerz (one-sided ovarian pain)</li>
+                                    <li>Increased libido</li>
+                                    <li>Heightened sense of smell</li>
+                                    <li>Slight spotting (in some cases)</li>
+                                    <li>Breast tenderness</li>
+                                </ul>
+                                
+                                <h6>Endometriosis Connection</h6>
+                                <p>Some people with endometriosis experience increased pain during ovulation, particularly if endometriosis affects the ovaries or surrounding areas.</p>
+                                
+                                <h6>Key Information</h6>
+                                <ul class="compact-list">
+                                    <li>Most fertile day of your cycle</li>
+                                    <li>Egg survives about 24 hours after release</li>
+                                    <li>Fertility window includes days before ovulation</li>
+                                    <li>Good time for important conversations</li>
+                                    <li>Many women experience energy peaks</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 p-2">
+                        <div class="phase-compact-card luteal-phase-card">
+                            <div class="phase-compact-header">
+                                <i class="fas fa-moon"></i>
+                                <h5>Luteal Phase</h5>
+                                <span class="phase-days">Days 15-28</span>
+                            </div>
+                            <div class="phase-compact-body">
+                                <h6>What's Happening</h6>
+                                <p>After ovulation, the ruptured follicle transforms into the corpus luteum, which produces progesterone. Your body prepares for potential pregnancy.</p>
+                                
+                                <h6>Body Changes</h6>
+                                <ul class="compact-list">
+                                    <li>Progesterone levels rise significantly</li>
+                                    <li>Estrogen levels rise again slightly</li>
+                                    <li>Basal body temperature remains elevated</li>
+                                    <li>Uterine lining continues to thicken</li>
+                                </ul>
+                                
+                                <h6>Common Symptoms (PMS)</h6>
+                                <ul class="compact-list">
+                                    <li>Breast tenderness and swelling</li>
+                                    <li>Bloating and water retention</li>
+                                    <li>Mood swings, irritability, anxiety</li>
+                                    <li>Food cravings, especially sweets or carbs</li>
+                                    <li>Fatigue and sleep changes</li>
+                                    <li>Headaches or migraines</li>
+                                </ul>
+                                
+                                <h6>Endometriosis Connection</h6>
+                                <p>Many with endometriosis experience worsening symptoms during the late luteal phase as inflammation increases and hormone levels change rapidly.</p>
+                                
+                                <h6>Self-Care Strategies</h6>
+                                <ul class="compact-list">
+                                    <li>Focus on gentle movement like yoga or walking</li>
+                                    <li>Prioritize quality sleep</li>
+                                    <li>Anti-inflammatory foods and omega-3s may help</li>
+                                    <li>Stress management techniques</li>
+                                    <li>Reduce caffeine and alcohol</li>
+                                    <li>Track your symptoms for patterns</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12 p-3">
+                        <div class="alert alert-info mb-0" role="alert">
+                            <h5><i class="fas fa-lightbulb me-2"></i>For Endometriosis Management</h5>
+                            <p>Understanding your cycle can be especially valuable for endometriosis management. Many people find their symptoms follow a pattern throughout their cycle. Tracking these patterns can help you:</p>
+                            <ul>
+                                <li>Predict when symptoms might worsen</li>
+                                <li>Time medications more effectively</li>
+                                <li>Plan rest days during potentially difficult phases</li>
+                                <li>Provide your healthcare provider with detailed symptom patterns</li>
+                                <li>Identify if treatments are improving phase-specific symptoms</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="card mb-4 cycle-tracker-card cycle-empty-state">
+    <div class="card-header bg-primary-light text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Menstrual Cycle Tracker</h5>
+    </div>
+    <div class="card-body text-center">
+        <div class="empty-state-icon mb-4">
+            <i class="fas fa-calendar-plus"></i>
+        </div>
+        <h4>Track Your Menstrual Cycle</h4>
+        <p class="mb-4">Understanding your cycle phases can help you prepare for changes in your body and manage endometriosis symptoms more effectively.</p>
+        
+        <div class="benefits-list">
+            <div class="benefit-item">
+                <i class="fas fa-check-circle text-success"></i>
+                <span>Predict your next period</span>
+            </div>
+            <div class="benefit-item">
+                <i class="fas fa-check-circle text-success"></i>
+                <span>Understand hormone fluctuations</span>
+            </div>
+            <div class="benefit-item">
+                <i class="fas fa-check-circle text-success"></i>
+                <span>Identify patterns in symptoms</span>
+            </div>
+            <div class="benefit-item">
+                <i class="fas fa-check-circle text-success"></i>
+                <span>Plan activities around your cycle</span>
+            </div>
+        </div>
+        
+        <button type="button" class="btn btn-primary btn-lg mt-4" data-bs-toggle="modal" data-bs-target="#updateCycleModal">
+            <i class="fas fa-plus-circle me-2"></i>Set Up Cycle Tracking
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Update Cycle Modal -->
+<div class="modal fade" id="updateCycleModal" tabindex="-1" aria-labelledby="updateCycleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary-light text-white">
+                <h5 class="modal-title" id="updateCycleModalLabel">
+                    <i class="fas fa-edit me-2"></i>{{ 'Update' if cycle_info else 'Set Up' }} Cycle Information
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('update_menstrual_cycle') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label for="last_period_start" class="form-label">When did your last period start?</label>
+                        <input type="date" class="form-control" id="last_period_start" name="last_period_start" 
+                               value="{% if cycle_info and cycle_info.last_period_start %}{{ cycle_info.last_period_start.strftime('%Y-%m-%d') }}{% endif %}" required>
+                        <div class="form-text">This helps us calculate your current cycle phase</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="cycle_length" class="form-label">How long is your typical cycle?</label>
+                        <div class="d-flex align-items-center">
+                            <input type="range" class="form-range me-3" id="cycle_length_range" 
+                                 min="21" max="35" step="1" 
+                                 value="{% if cycle_info %}{{ cycle_info.cycle_length }}{% else %}28{% endif %}">
+                            <input type="number" class="form-control" id="cycle_length" name="cycle_length" 
+                                 style="width: 80px" min="21" max="35" 
+                                 value="{% if cycle_info %}{{ cycle_info.cycle_length }}{% else %}28{% endif %}" required>
+                            <span class="ms-2">days</span>
+                        </div>
+                        <div class="form-text">Average cycle length is 28 days, but can range from 21-35 days</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="period_duration" class="form-label">How many days does your period typically last?</label>
+                        <div class="d-flex align-items-center">
+                            <input type="range" class="form-range me-3" id="period_duration_range" 
+                                 min="2" max="8" step="1" 
+                                 value="{% if cycle_info %}{{ cycle_info.period_duration }}{% else %}5{% endif %}">
+                            <input type="number" class="form-control" id="period_duration" name="period_duration" 
+                                 style="width: 80px" min="2" max="8" 
+                                 value="{% if cycle_info %}{{ cycle_info.period_duration }}{% else %}5{% endif %}" required>
+                            <span class="ms-2">days</span>
+                        </div>
+                        <div class="form-text">Most periods last 3-7 days</div>
+                    </div>
+                    <div class="alert alert-info mt-4" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>This information helps us provide personalized insights about your cycle. You can update it anytime.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Cycle Tracker Card Styles */
+.cycle-tracker-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.cycle-tracker-card:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Phase Badge Styles */
+.phase-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 50px;
+    margin-bottom: 10px;
+    font-weight: 500;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.phase-badge .phase-icon {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+/* Phase-specific colors */
+.menstrual-phase {
+    background-color: #ff8a8a;
+    color: #fff;
+}
+
+.follicular-phase {
+    background-color: #8bc34a;
+    color: #fff;
+}
+
+.ovulation-phase {
+    background-color: #ffb74d;
+    color: #fff;
+}
+
+.luteal-phase {
+    background-color: #7986cb;
+    color: #fff;
+}
+
+.upcoming {
+    opacity: 0.8;
+}
+
+/* Countdown badge */
+.countdown-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 5px 10px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+.countdown-badge i {
+    margin-right: 5px;
+}
+
+/* Cycle Information List */
+.cycle-details {
+    margin-top: 15px;
+}
+
+.cycle-details li {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.cycle-details li i {
+    width: 20px;
+    margin-right: 10px;
+}
+
+/* Cycle Visualization */
+.cycle-circle-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.cycle-circle {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    overflow: hidden;
+    box-shadow: 0 0 0 4px #eeeeee;
+}
+
+.phase-segment {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    transform-origin: bottom right;
+}
+
+.phase-segment.menstrual {
+    background-color: #ff8a8a;
+    top: 0;
+    left: 0;
+    transform: rotate(0deg);
+    clip-path: polygon(100% 100%, 0 100%, 0 0);
+    z-index: 4;
+}
+
+.phase-segment.follicular {
+    background-color: #8bc34a;
+    top: 0;
+    right: 0;
+    transform: rotate(0deg);
+    clip-path: polygon(0 100%, 0 0, 100% 0);
+    z-index: 3;
+}
+
+.phase-segment.ovulation {
+    background-color: #ffb74d;
+    bottom: 0;
+    right: 0;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    z-index: 2;
+}
+
+.phase-segment.luteal {
+    background-color: #7986cb;
+    bottom: 0;
+    left: 0;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    z-index: 1;
+}
+
+.cycle-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background-color: white;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+}
+
+.cycle-center span {
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.cycle-center small {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.cycle-marker {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    background-color: white;
+    border: 3px solid #e91e63;
+    border-radius: 50%;
+    transform-origin: center 80px;
+    z-index: 6;
+}
+
+/* Phase Info Cards */
+.phase-card {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: 100%;
+}
+
+.phase-card-header {
+    padding: 15px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.phase-card-header i {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+}
+
+.phase-card-header h5 {
+    margin-bottom: 5px;
+}
+
+.phase-days {
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.phase-card-body {
+    padding: 15px;
+}
+
+.phase-card-body h6 {
+    margin-top: 12px;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.phase-card-body ul {
+    padding-left: 20px;
+    margin-bottom: 5px;
+}
+
+.phase-card-body li {
+    margin-bottom: 3px;
+}
+
+.menstrual-phase .phase-card-header {
+    background-color: #ff8a8a;
+}
+
+.follicular-phase .phase-card-header {
+    background-color: #8bc34a;
+}
+
+.ovulation-phase .phase-card-header {
+    background-color: #ffb74d;
+}
+
+.luteal-phase .phase-card-header {
+    background-color: #7986cb;
+}
+
+/* Empty state styling */
+.cycle-empty-state .empty-state-icon {
+    font-size: 3.5rem;
+    color: #90caf9;
+    margin-bottom: 1rem;
+}
+
+.benefits-list {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.benefit-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.benefit-item i {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+/* Add these new styles for compact phase cards */
+.phase-compact-card {
+    height: 100%;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.phase-compact-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.phase-compact-header {
+    color: white;
+    padding: 20px 15px;
+    text-align: center;
+    border-radius: 10px 10px 0 0;
+}
+
+.phase-compact-header i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.phase-compact-header h5 {
+    margin-bottom: 5px;
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.phase-compact-body {
+    padding: 15px;
+    font-size: 0.9rem;
+    overflow-y: auto;
+    max-height: 350px;
+    background-color: #fff;
+}
+
+.phase-compact-body h6 {
+    font-weight: 600;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    color: #444;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding-bottom: 3px;
+}
+
+.phase-compact-body p {
+    margin-bottom: 10px;
+}
+
+.compact-list {
+    padding-left: 18px;
+    margin-bottom: 8px;
+}
+
+.compact-list li {
+    margin-bottom: 4px;
+    position: relative;
+}
+
+/* Phase-specific styles with more distinct colors */
+.menstrual-phase-card .phase-compact-header {
+    background-color: #ff8a8a;
+    background-image: linear-gradient(135deg, #ff8a8a, #ff6b6b);
+}
+
+.follicular-phase-card .phase-compact-header {
+    background-color: #8bc34a;
+    background-image: linear-gradient(135deg, #8bc34a, #7cb342);
+}
+
+.ovulation-phase-card .phase-compact-header {
+    background-color: #ffb74d;
+    background-image: linear-gradient(135deg, #ffb74d, #ffa726);
+}
+
+.luteal-phase-card .phase-compact-header {
+    background-color: #7986cb;
+    background-image: linear-gradient(135deg, #7986cb, #5c6bc0);
+}
+
+/* Matching border colors for each phase card */
+.menstrual-phase-card {
+    border-color: #ff8a8a;
+}
+
+.follicular-phase-card {
+    border-color: #8bc34a;
+}
+
+.ovulation-phase-card {
+    border-color: #ffb74d;
+}
+
+.luteal-phase-card {
+    border-color: #7986cb;
+}
+
+/* Customize scrollbar for the compact cards */
+.phase-compact-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.phase-compact-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.phase-compact-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.phase-compact-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Phase days badges */
+.phase-days {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 3px 10px;
+    border-radius: 50px;
+    margin-top: 5px;
+}
+
+/* Hormone chart styles */
+.hormone-chart-container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-top: 15px;
+}
+
+.hormone-chart {
+    position: relative;
+    margin-top: 10px;
+}
+
+.chart-phase-markers {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    display: flex;
+}
+
+.phase-marker {
+    position: absolute;
+    height: 6px;
+    bottom: -6px;
+}
+
+.phase-marker.menstrual {
+    background-color: rgba(255, 138, 138, 0.5);
+}
+
+.phase-marker.follicular {
+    background-color: rgba(139, 195, 74, 0.5);
+}
+
+.phase-marker.ovulation {
+    background-color: rgba(255, 183, 77, 0.5);
+}
+
+.phase-marker.luteal {
+    background-color: rgba(121, 134, 203, 0.5);
+}
+
+/* Symptom chart styles */
+.symptom-chart-container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.symptom-chart {
+    margin-top: 20px;
+    padding: 10px;
+}
+
+.symptom-chart h4 {
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.symptom-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.symptom-label {
+    width: 70px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-right: 10px;
+}
+
+.symptom-data {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.intensity-bars {
+    height: 18px;
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+    width: 100%;
+}
+
+.intensity-bar {
+    height: 100%;
+}
+
+.intensity-bar.menstrual {
+    background-color: #FF9999;
+}
+
+.intensity-bar.follicular {
+    background-color: #A6D96A;
+}
+
+.intensity-bar.ovulation {
+    background-color: #FDAE61;
+}
+
+.intensity-bar.luteal {
+    background-color: #92C5DE;
+}
+
+.intensity-percentages {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 2px;
+}
+
+.percentage {
+    font-size: 0.7rem;
+    color: #666;
+    width: 25%;
+    text-align: center;
+}
+
+.phase-legend {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 0 8px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 4px;
+}
+
+.legend-color.menstrual {
+    background-color: #FF9999;
+}
+
+.legend-color.follicular {
+    background-color: #A6D96A;
+}
+
+.legend-color.ovulation {
+    background-color: #FDAE61;
+}
+
+.legend-color.luteal {
+    background-color: #92C5DE;
+}
+
+.legend-label {
+    font-size: 0.75rem;
+    color: #555;
+}
+
+/* Add the new bg-primary-light class in the style section */
+.bg-primary-light {
+    background-color: #1a8cff; /* Lighter blue that matches the UI */
+    background-image: linear-gradient(to right, #1a8cff, #4da6ff);
+}
+</style>
+
+<!-- Chart.js Library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+
+<!-- JavaScript for the hormone chart -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Create hormone chart if the canvas exists
+    const hormoneChartCanvas = document.getElementById('hormoneChart');
+    if (hormoneChartCanvas) {
+        // Data for a 28-day cycle
+        const days = Array.from({length: 28}, (_, i) => i + 1);
+        
+        // Hormone level data - simulated values
+        const estrogenLevels = [5, 7, 10, 15, 20, 30, 40, 55, 75, 95, 115, 140, 160, 150, 120, 110, 100, 95, 90, 85, 80, 75, 70, 65, 55, 40, 20, 10];
+        const progesteroneLevels = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 20, 40, 60, 80, 100, 120, 140, 150, 140, 120, 80, 40, 15, 5];
+        const lhLevels = [5, 5, 5, 5, 7, 10, 12, 15, 20, 25, 35, 90, 150, 40, 10, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+        
+        // Create chart
+        const hormoneChart = new Chart(hormoneChartCanvas, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [
+                    {
+                        label: 'Estrogen',
+                        data: estrogenLevels,
+                        borderColor: '#E91E63',
+                        backgroundColor: 'rgba(233, 30, 99, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'Progesterone',
+                        data: progesteroneLevels,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    },
+                    {
+                        label: 'LH',
+                        data: lhLevels,
+                        borderColor: '#FFC107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        tension: 0.4,
+                        borderWidth: 2,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            usePointStyle: true,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return 'Day ' + tooltipItems[0].label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Cycle Day'
+                        },
+                        ticks: {
+                            callback: function(value, index) {
+                                // Show only every 7th day
+                                return index % 7 === 0 ? value : '';
+                            },
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Hormone Level'
+                        },
+                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 0
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Connect range sliders with number inputs
+    const cycleLengthRange = document.getElementById('cycle_length_range');
+    const cycleLengthInput = document.getElementById('cycle_length');
+    
+    if (cycleLengthRange && cycleLengthInput) {
+        cycleLengthRange.addEventListener('input', function() {
+            cycleLengthInput.value = this.value;
+        });
+        
+        cycleLengthInput.addEventListener('input', function() {
+            cycleLengthRange.value = this.value;
+        });
+    }
+    
+    const periodDurationRange = document.getElementById('period_duration_range');
+    const periodDurationInput = document.getElementById('period_duration');
+    
+    if (periodDurationRange && periodDurationInput) {
+        periodDurationRange.addEventListener('input', function() {
+            periodDurationInput.value = this.value;
+        });
+        
+        periodDurationInput.addEventListener('input', function() {
+            periodDurationRange.value = this.value;
+        });
+    }
+    
+    // Connect learn more button to modal
+    const cycleInfoBtn = document.getElementById('cycleInfoBtn');
+    if (cycleInfoBtn) {
+        cycleInfoBtn.addEventListener('click', function() {
+            const cycleInfoModal = new bootstrap.Modal(document.getElementById('cycleInfoModal'));
+            cycleInfoModal.show();
+        });
+    }
+});
+</script> 

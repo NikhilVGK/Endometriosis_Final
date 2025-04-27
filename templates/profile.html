@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | EndoMetrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='response.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heartbeat me-2"></i>
+                EndoMetrics
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" data-i18n="nav.home"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/assessment" data-i18n="nav.assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/my_record" data-i18n="nav.record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-i18n="nav.help"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle"></i> {{ session.username }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item active" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <div class="container text-center">
+            <div class="profile-image-container">
+                {% if user.profile_picture %}
+                    <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Profile Image" class="profile-image">
+                {% elif user.avatar_choice > 0 %}
+                    <img src="{{ url_for('static', filename='avatars/avatar_' + user.avatar_choice|string + '.jpg') }}" alt="Profile Avatar" class="profile-image">
+                {% else %}
+                    <img src="{{ url_for('static', filename='avatars/avatar_1.jpg') }}" alt="Default Avatar" class="profile-image">
+                {% endif %}
+                
+                <!-- Quick Change Profile Picture Button -->
+                <button type="button" class="profile-image-upload-btn" data-bs-toggle="modal" data-bs-target="#profilePictureModal">
+                    <i class="fas fa-camera"></i>
+                </button>
+            </div>
+            <h2>{{ user.first_name or '' }} {{ user.last_name or '' }}</h2>
+            <p>@{{ user.username }}</p>
+        </div>
+    </div>
+
+    <!-- Profile Picture Modal -->
+    <div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profilePictureModalLabel">Change Profile Picture</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('update_profile') }}" method="POST" enctype="multipart/form-data" id="profilePictureForm">
+                        <!-- Keep the current values -->
+                        <input type="hidden" name="username" value="{{ user.username }}">
+                        <input type="hidden" name="email" value="{{ user.email }}">
+                        <input type="hidden" name="first_name" value="{{ user.first_name or '' }}">
+                        <input type="hidden" name="last_name" value="{{ user.last_name or '' }}">
+                        
+                        <!-- Image Preview -->
+                        <div id="preview-container" class="mb-3">
+                            {% if user.profile_picture %}
+                                <img id="image-preview" src="{{ url_for('static', filename=user.profile_picture) }}" alt="Profile Image Preview">
+                            {% elif user.avatar_choice > 0 %}
+                                <img id="image-preview" src="{{ url_for('static', filename='avatars/avatar_' + user.avatar_choice|string + '.jpg') }}" alt="Avatar Preview">
+                            {% else %}
+                                <img id="image-preview" src="{{ url_for('static', filename='avatars/avatar_1.jpg') }}" alt="Default Preview">
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="modal_profile_picture" class="form-label">Upload Image</label>
+                            <input type="file" class="form-control" id="modal_profile_picture" name="profile_picture" accept="image/*">
+                            <div class="form-text">Select a square image for best results (JPG, PNG).</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label d-block">Or Choose an Avatar</label>
+                            <div class="avatar-selection">
+                                {% for i in range(1, 33) %}
+                                    <div class="avatar-option">
+                                        <input type="radio" name="avatar_choice" id="modal_avatar_{{ i }}" value="{{ i }}" {{ 'checked' if user.avatar_choice == i else '' }}>
+                                        <label for="modal_avatar_{{ i }}">
+                                            <img src="{{ url_for('static', filename='avatars/avatar_' + i|string + '.jpg') }}" alt="Avatar {{ i }}" class="avatar-thumbnail">
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="profilePictureForm" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% if 'medication' not in message and 'assessment' not in message %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="row">
+            <!-- Profile Navigation -->
+            <div class="col-md-3 mb-4">
+                <div class="profile-card">
+                    <h5 class="mb-4">Profile Menu</h5>
+                    <div class="profile-nav">
+                        <ul class="nav flex-column">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#"><i class="fas fa-user"></i> Personal Information</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#"><i class="fas fa-lock"></i> Security</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#"><i class="fas fa-bell"></i> Notifications</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#"><i class="fas fa-cog"></i> Preferences</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="profile-card">
+                    <h5 class="mb-4">Actions</h5>
+                    <div class="d-grid gap-2">
+                        <a href="/assessment" class="btn btn-primary btn-sm">
+                            <i class="fas fa-clipboard-check me-2"></i>Start Assessment
+                        </a>
+                        <a href="/my_record" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-chart-line me-2"></i>View Health Records
+                        </a>
+                        <a href="#" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#myStoriesModal">
+                            <i class="fas fa-book me-2"></i>My Stories
+                        </a>
+                        <a href="/my_feedback" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-comment me-2"></i>My Feedback
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Information -->
+            <div class="col-md-9">
+                <div class="profile-card">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5>Personal Information</h5>
+                        <button class="btn btn-edit" id="toggleEdit">
+                            <i class="fas fa-pencil-alt me-2"></i>Edit
+                        </button>
+                    </div>
+                    
+                    <!-- View Mode -->
+                    <div id="viewMode">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-label">Username</div>
+                                    <div class="info-value">{{ user.username }}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">First Name</div>
+                                    <div class="info-value">{{ user.first_name or 'Not specified' }}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Last Name</div>
+                                    <div class="info-value">{{ user.last_name or 'Not specified' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-label">Email</div>
+                                    <div class="info-value">{{ user.email }}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Date of Birth</div>
+                                    <div class="info-value">{{ user.date_of_birth.strftime('%B %d, %Y') if user.date_of_birth else 'Not specified' }}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Member Since</div>
+                                    <div class="info-value">{{ user.created_at.strftime('%B %d, %Y') }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Edit Mode -->
+                    <div id="editMode" style="display: none;">
+                        <form action="{{ url_for('update_profile') }}" method="POST" enctype="multipart/form-data">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="username" name="username" value="{{ user.username }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="first_name" class="form-label">First Name</label>
+                                        <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name or '' }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="last_name" class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name or '' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <p class="text-muted mb-1">Member Since</p>
+                                        <p>{{ user.created_at.strftime('%B %d, %Y') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" id="cancelEdit">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="profile-card">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5>My Assessments</h5>
+                        <a href="/assessment" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>New Assessment
+                        </a>
+                    </div>
+                    
+                    
+                    
+                    <p class="text-muted mb-4">View, edit, and download your formal assessment reports from the Assessment page.</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Pain Level</th>
+                                    <th>Prediction</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if assessments %}
+                                    {% for assessment in assessments %}
+                                    <tr {% if loop.index % 2 == 0 %}class="table-light"{% endif %}>
+                                        <td>{{ assessment.assessment_date.strftime('%b %d, %Y') }}</td>
+                                        <td>
+                                            <span class="badge {% if assessment.pain_level <= 3 %}bg-success{% elif assessment.pain_level <= 6 %}bg-warning{% else %}bg-danger{% endif %} rounded-pill">
+                                                {{ assessment.pain_level }}/10
+                                            </span>
+                                        </td>
+                                        <td>{{ assessment.prediction or 'N/A' }}</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="/assessment_detail/{{ assessment.id }}" class="btn btn-outline-primary">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="/edit_assessment/{{ assessment.id }}" class="btn btn-outline-secondary">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a href="/download_report/{{ assessment.id }}" class="btn btn-outline-success">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                                <button type="button" class="btn btn-outline-danger delete-assessment-btn" 
+                                                        data-assessment-id="{{ assessment.id }}"
+                                                        data-assessment-date="{{ assessment.assessment_date.strftime('%b %d, %Y') }}">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4">
+                                            <p class="text-muted mb-2">No assessments found</p>
+                                            <a href="/assessment" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-clipboard-check me-2"></i>Complete Your First Assessment
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="profile-card">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5>Privacy Settings</h5>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="shareDataResearch" checked>
+                        <label class="form-check-label" for="shareDataResearch">
+                            Share anonymized data for research
+                        </label>
+                        <div class="form-text text-muted">
+                            Help improve endometriosis research by anonymously sharing your data
+                        </div>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                        <label class="form-check-label" for="emailNotifications">
+                            Email notifications
+                        </label>
+                        <div class="form-text text-muted">
+                            Receive important updates and reminders via email
+                        </div>
+                    </div>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="twoFactorAuth">
+                        <label class="form-check-label" for="twoFactorAuth">
+                            Two-factor authentication
+                        </label>
+                        <div class="form-text text-muted">
+                            Add an extra layer of security to your account
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>&copy; 2023 EndoMetrics. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-decoration-none">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    <!-- My Stories Modal -->
+    <div class="modal fade" id="myStoriesModal" tabindex="-1" aria-labelledby="myStoriesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="myStoriesModalLabel">My Stories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <p class="text-muted">Here you can view, edit, and delete your stories that you've shared. Only stories with "Allow sharing" enabled will be visible on the homepage.</p>
+                    </div>
+                    
+                    <!-- Stories List Container -->
+                    <div id="storiesContainer">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading your stories...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Debug button to manually load stories -->
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-primary" id="manualLoadBtn">
+                            <i class="fas fa-sync me-2"></i>Manually Load Stories
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="deleteSelectedStoriesBtn" class="btn btn-danger me-auto">
+                        <i class="fas fa-trash-alt me-1"></i> Delete Selected Stories
+                    </button>
+                    <button type="button" id="cancelStoryDeletionModeBtn" class="btn btn-secondary me-2" style="display: none;">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Story Modal -->
+    <div class="modal fade" id="editStoryModal" tabindex="-1" aria-labelledby="editStoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editStoryModalLabel">Edit Story</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStoryForm" method="POST">
+                        <div class="mb-3">
+                            <label for="edit_story_content" class="form-label">Your Story</label>
+                            <textarea class="form-control" id="edit_story_content" name="story_content" rows="5" required></textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="edit_allow_sharing" name="allow_sharing">
+                            <label class="form-check-label" for="edit_allow_sharing">Allow sharing on the homepage</label>
+                            <div class="form-text">If enabled, your story will be visible to others on the homepage.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" form="editStoryForm">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Story Modal -->
+    <div class="modal fade" id="deleteStoryModal" tabindex="-1" aria-labelledby="deleteStoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteStoryModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this story? This action cannot be undone.</p>
+                    <form id="deleteStoryForm" method="POST">
+                        <!-- Form will be updated with the correct action URL -->
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" form="deleteStoryForm">Delete Story</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include profile stories script -->
+    <script src="{{ url_for('static', filename='profile_stories.js') }}"></script>
+
+    <!-- JavaScript for edit mode toggle -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleEditBtn = document.getElementById('toggleEdit');
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const cancelEditBtn = document.getElementById('cancelEdit');
+            
+            // Toggle edit mode
+            toggleEditBtn.addEventListener('click', function() {
+                viewMode.style.display = 'none';
+                editMode.style.display = 'block';
+            });
+            
+            // Cancel edit
+            cancelEditBtn.addEventListener('click', function() {
+                viewMode.style.display = 'block';
+                editMode.style.display = 'none';
+            });
+            
+            // Profile Picture Preview
+            const modalProfilePicture = document.getElementById('modal_profile_picture');
+            const imagePreview = document.getElementById('image-preview');
+            
+            if (modalProfilePicture && imagePreview) {
+                modalProfilePicture.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(e) {
+                            imagePreview.src = e.target.result;
+                        }
+                        
+                        reader.readAsDataURL(this.files[0]);
+                        
+                        // Clear avatar selection when uploading a custom image
+                        document.querySelectorAll('input[name="avatar_choice"]').forEach(radio => {
+                            radio.checked = false;
+                        });
+                    }
+                });
+            }
+            
+            // Avatar Selection Preview
+            const avatarRadios = document.querySelectorAll('input[name="avatar_choice"]');
+            
+            avatarRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        const avatarId = this.value;
+                        imagePreview.src = `{{ url_for('static', filename='avatars/avatar_') }}${avatarId}.jpg`;
+                        
+                        // Clear file input when selecting an avatar
+                        if (modalProfilePicture) {
+                            modalProfilePicture.value = '';
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <!-- Assessment deletion script -->
+    <script>
+        // Add event listeners to all delete buttons once the DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all delete assessment buttons
+            const deleteButtons = document.querySelectorAll('.delete-assessment-btn');
+            
+            // Add click event listener to each button
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const assessmentId = this.getAttribute('data-assessment-id');
+                    const assessmentDate = this.getAttribute('data-assessment-date');
+                    
+                    // Confirm before deleting
+                    if (confirm(`Are you sure you want to delete the assessment from ${assessmentDate}? This action cannot be undone.`)) {
+                        window.location.href = "/delete_assessment/" + assessmentId;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

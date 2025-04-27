@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endometriosis Assessment - Endometrics</title>
+    
+    <!-- Bootstrap and other external CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    
+    <!-- Add Chart.js for tracking visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='response.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/assessment.css') }}" rel="stylesheet"> <!-- Link to the new CSS file -->
+    
+    <!-- External Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/i18next@21.6.10/dist/umd/i18next.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next-http-backend@1.3.1/i18next-http-backend.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heartbeat me-2"></i>
+                <span>Endometrics</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/assessment"><i class="fas fa-clipboard-check"></i> Assessment</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/my_record"><i class="fas fa-chart-line"></i> My Record</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </li>
+                </ul>
+                <!-- User Profile Dropdown -->
+                <div class="nav-item dropdown">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i>
+                        <span>{{ session.username }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-id-card me-2"></i>My Profile</a></li>
+                        <li><a class="dropdown-item" href="/my_record"><i class="fas fa-chart-line me-2"></i>My Records</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="text-center mb-4" data-i18n="page.title">Endometriosis Assessment</h1>
+                <p class="text-center mb-5" data-i18n="page.subtitle">Please fill out the following form carefully to help us assess your condition.</p>
+            </div>
+        </div>
+
+        <!-- Copy all form sections from index.html -->
+        <form id="analysisForm" class="needs-validation" novalidate>
+            <!-- Patient Information Section -->
+            <div class="form-section" data-section="patientInfo">
+                <div class="section-title">
+                    <i class="fas fa-user-circle"></i>
+                    <h3 data-i18n="patientInfo.title">Patient Information</h3>
+                </div>
+                <p class="positive-message" data-i18n="patientInfo.welcome">Welcome! We're here to support you every step of the way 💝</p>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="fullName" class="form-label" data-i18n="patientInfo.fullName">Full Name</label>
+                        <input type="text" class="form-control" id="fullName" name="fullName" required data-i18n-placeholder="patientInfo.fullNamePlaceholder">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="age" class="form-label" data-i18n="age">Age</label>
+                        <input type="number" class="form-control" id="age" name="age" required min="0" max="120">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="bmi" class="form-label" data-i18n="bmi">BMI</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="bmi" name="bmi" required step="0.1">
+                            <button type="button" class="btn btn-outline-primary" id="calculateBmiBtn">
+                                <i class="fas fa-calculator"></i> Calculate
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">Don't know your BMI? Click Calculate.</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="cycleRegularity" class="form-label" data-i18n="cycleRegularity">Menstrual Cycle Regularity</label>
+                        <select class="form-select" id="cycleRegularity" name="cycleRegularity" required>
+                            <option value="" data-i18n="choose">Choose...</option>
+                            <option value="regular" data-i18n="regular">Regular</option>
+                            <option value="irregular" data-i18n="irregular">Irregular</option>
+                            <option value="unsure" data-i18n="unsure">Not Sure</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Symptoms Assessment Section -->
+            <div class="form-section" data-section="symptoms">
+                <div class="section-title">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3 data-i18n="symptoms.title">Symptom Assessment</h3>
+                </div>
+                <p class="positive-message" data-i18n="symptoms.subtitle">Your detailed input helps us provide better insights 🌟</p>
+                
+                <!-- Pain Assessment -->
+                <div class="mb-4">
+                    <label class="form-label" data-i18n="symptoms.painIntensity">Pain Intensity
+                        <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" 
+                           data-i18n-tooltip="symptoms.painIntensityTooltip"></i>
+                    </label>
+                    <div class="position-relative">
+                        <input type="range" class="form-range" id="pain_level" name="pain_level" min="0" max="10" value="5" step="1">
+                        <div id="sliderValue" class="position-absolute top-0 start-50 translate-middle-x" 
+                             style="margin-top: -25px; font-weight: bold; font-size: 1.2rem;">5</div>
+                    </div>
+                    <div class="pain-level-labels d-flex justify-content-between mt-2">
+                        <span class="text-success" data-i18n="noPain">No Pain (0)</span>
+                        <span class="text-warning" data-i18n="moderate">Moderate (5)</span>
+                        <span class="text-danger" data-i18n="severe">Severe (10)</span>
+                    </div>
+                </div>
+
+                <script>
+                    // Pain slider functionality
+                    const painSlider = document.getElementById('pain_level');
+                    const sliderValue = document.getElementById('sliderValue');
+
+                    function updateSliderColor(value) {
+                        let color;
+                        if (value <= 4) {
+                            color = '#198754'; // Bootstrap success/green
+                        } else if (value <= 7) {
+                            color = '#ffc107'; // Bootstrap warning/yellow
+                        } else {
+                            color = '#dc3545'; // Bootstrap danger/red
+                        }
+                        painSlider.style.setProperty('--slider-color', color);
+                        sliderValue.style.color = color;
+                        sliderValue.textContent = value;
+                    }
+
+                    painSlider.addEventListener('input', (e) => {
+                        updateSliderColor(e.target.value);
+                    });
+
+                    // Initialize slider color
+                    updateSliderColor(painSlider.value);
+                </script>
+
+                <!-- Symptom Categories -->
+                <div class="row g-4 mb-4">
+                    <!-- Menstrual Symptoms -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="menstrual">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                    Menstrual Symptoms
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="heavyBleeding" name="menstrualSymptoms[]" value="heavyBleeding">
+                                    <label class="form-check-label" for="heavyBleeding">Heavy Bleeding</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="irregularPeriods" name="menstrualSymptoms[]" value="irregularPeriods">
+                                    <label class="form-check-label" for="irregularPeriods">Irregular Periods</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="spotting" name="menstrualSymptoms[]" value="spotting">
+                                    <label class="form-check-label" for="spotting">Spotting Between Periods</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="clotting" name="menstrualSymptoms[]" value="clotting">
+                                    <label class="form-check-label" for="clotting">Blood Clots</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Digestive Symptoms -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="digestive">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-stomach text-primary me-2"></i>
+                                    Digestive Symptoms
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="constipation" name="digestiveSymptoms[]" value="constipation">
+                                    <label class="form-check-label" for="constipation">Constipation</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="diarrhea" name="digestiveSymptoms[]" value="diarrhea">
+                                    <label class="form-check-label" for="diarrhea">Diarrhea</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="bloating" name="digestiveSymptoms[]" value="bloating">
+                                    <label class="form-check-label" for="bloating">Bloating</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="nausea" name="digestiveSymptoms[]" value="nausea">
+                                    <label class="form-check-label" for="nausea">Nausea</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Urinary Symptoms -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="urinary">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-toilet text-primary me-2"></i>
+                                    Urinary Symptoms
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="frequentUrination" name="urinarySymptoms[]" value="frequentUrination">
+                                    <label class="form-check-label" for="frequentUrination">Frequent Urination</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="painfulUrination" name="urinarySymptoms[]" value="painfulUrination">
+                                    <label class="form-check-label" for="painfulUrination">Painful Urination</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="bladderPressure" name="urinarySymptoms[]" value="bladderPressure">
+                                    <label class="form-check-label" for="bladderPressure">Bladder Pressure</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="urinaryUrgency" name="urinarySymptoms[]" value="urinaryUrgency">
+                                    <label class="form-check-label" for="urinaryUrgency">Urinary Urgency</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mental Health Impact -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="mental">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-brain text-primary me-2"></i>
+                                    Mental Health Impact
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="anxiety" name="mentalHealth[]" value="anxiety">
+                                    <label class="form-check-label" for="anxiety">Anxiety</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="depression" name="mentalHealth[]" value="depression">
+                                    <label class="form-check-label" for="depression">Depression</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="moodSwings" name="mentalHealth[]" value="moodSwings">
+                                    <label class="form-check-label" for="moodSwings">Mood Swings</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="fatigue" name="mentalHealth[]" value="fatigue">
+                                    <label class="form-check-label" for="fatigue">Fatigue/Low Energy</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sexual Health -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="sexual">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-heart text-primary me-2"></i>
+                                    Sexual Health
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="painDuringIntercourse" name="sexualHealth[]" value="painDuringIntercourse">
+                                    <label class="form-check-label" for="painDuringIntercourse">Pain During Intercourse</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="bleedingAfterIntercourse" name="sexualHealth[]" value="bleedingAfterIntercourse">
+                                    <label class="form-check-label" for="bleedingAfterIntercourse">Bleeding After Intercourse</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="reducedLibido" name="sexualHealth[]" value="reducedLibido">
+                                    <label class="form-check-label" for="reducedLibido">Reduced Libido</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fertility Concerns -->
+                    <div class="col-md-6">
+                        <div class="card h-100" data-category="fertility">
+                            <div class="card-body">
+                                <h5 class="card-title" data-i18n="title">
+                                    <i class="fas fa-baby text-primary me-2"></i>
+                                    Fertility Concerns
+                                </h5>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="difficultyConceiving" name="fertilitySymptoms[]" value="difficultyConceiving">
+                                    <label class="form-check-label" for="difficultyConceiving">Difficulty Conceiving</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="previousMiscarriage" name="fertilitySymptoms[]" value="previousMiscarriage">
+                                    <label class="form-check-label" for="previousMiscarriage">Previous Miscarriage</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input type="checkbox" class="form-check-input" id="ivfTreatment" name="fertilitySymptoms[]" value="ivfTreatment">
+                                    <label class="form-check-label" for="ivfTreatment">Current/Past IVF Treatment</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pain Locations -->
+                <div class="mb-4">
+                    <label class="form-label">Pain Locations</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="pelvicPain" name="painLocations[]" value="pelvic">
+                                <label class="form-check-label" for="pelvicPain">Pelvic Pain</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="lowerBackPain" name="painLocations[]" value="lowerBack">
+                                <label class="form-check-label" for="lowerBackPain">Lower Back Pain</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="bladderPain" name="painLocations[]" value="bladder">
+                                <label class="form-check-label" for="bladderPain">Pain During Urination</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="bowelPain" name="painLocations[]" value="bowel">
+                                <label class="form-check-label" for="bowelPain">Pain During Bowel Movement</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Images Section -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-images"></i>
+                    <h3>Medical Images</h3>
+                </div>
+                <p class="positive-message">Your records help us provide better care 📋</p>
+                <div class="upload-container border rounded p-4 text-center">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
+                    <p class="mb-2">Share your medical images securely</p>
+                    <p class="text-muted small mb-3">Your privacy is our priority</p>
+                    <label class="btn btn-outline-primary mb-3" for="image">
+                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                        <input type="file" class="form-control d-none" id="image" name="image" accept="image/*" multiple>
+                    </label>
+                    <p class="text-muted small">Supported formats: JPG, PNG, PDF (Max size: 10MB)</p>
+                </div>
+                <div id="imagePreviewContainer" class="mt-3 row g-3">
+                    <!-- Image previews will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Text Description Section -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-comment-medical"></i>
+                    <h3>Detailed Description</h3>
+                </div>
+                <p class="positive-message">Help us understand your symptoms better 🎯</p>
+                
+                <div class="description-container">
+                    <div class="mb-3">
+                        <label for="symptomDescription" class="form-label">
+                            Describe your symptoms and concerns in detail
+                            <i class="fas fa-info-circle tooltip-icon" data-bs-toggle="tooltip" 
+                               title="Include any additional symptoms, their frequency, and how they affect your daily life"></i>
+                        </label>
+                        <div class="position-relative">
+                            <textarea class="form-control" id="symptomDescription" name="symptomDescription" 
+                                    rows="8" placeholder="Type to describe your symptoms..."></textarea>
+                            <button type="button" id="voiceInputBtn" class="btn btn-outline-primary position-absolute" 
+                                    style="bottom: 10px; right: 15px; z-index: 10;" title="Click to start voice input">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <div class="form-check position-absolute" style="bottom: 10px; right: 65px; z-index: 10;">
+                                <input class="form-check-input" type="checkbox" id="useGroq" checked>
+                                <label class="form-check-label small text-muted" for="useGroq">
+                                    Use AI for medical transcription
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Information Section -->
+            <div class="form-section">
+                <div class="section-title">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Additional Information</h3>
+                </div>
+                <div class="mb-4">
+                    <label for="currentMedications" class="form-label">Current Medications</label>
+                    <textarea class="form-control" id="currentMedications" name="currentMedications" rows="2"
+                        placeholder="List any medications you are currently taking..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Previous Surgeries</label>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" id="surgeriesYes" name="hasSurgeries" value="yes">
+                            <label class="form-check-label" for="surgeriesYes">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" id="surgeriesNo" name="hasSurgeries" value="no">
+                            <label class="form-check-label" for="surgeriesNo">No</label>
+                        </div>
+                    </div>
+                    <div id="surgeryDetails" class="collapse">
+                        <textarea class="form-control" id="surgeryDescription" name="surgeryDescription" rows="2"
+                            placeholder="Please describe your previous surgeries..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end mb-5">
+                <button type="submit" class="btn btn-primary btn-lg" data-i18n-btn="common.submit">
+                    <i class="fas fa-paper-plane me-2"></i>Submit and Generate Report
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Analysis Results Overlay -->
+    <div id="analysisOverlay" class="analysis-overlay">
+        <div class="analysis-content">
+            <span class="close-button">&times;</span>
+            <button id="ttsButton" class="btn btn-outline-primary position-absolute" 
+                    style="top: 25px; right: 50px; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;" 
+                    title="Read report aloud using AI voice">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <h2><i class="fas fa-chart-bar"></i> Analysis Results</h2>
+            <div id="loadingSpinner" class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Analyzing your data...</p>
+            </div>
+            <div id="analysisResults" style="display: none;">
+                <div class="analysis-header">
+                    <div class="analysis-logo">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>Endometrics Assessment Report</span>
+                    </div>
+                    <div class="analysis-meta">
+                        <div>Date: <span id="reportDate"></span></div>
+                        <div>Patient ID: <span id="patientId">EM-<script>document.write(Math.floor(Math.random() * 10000).toString().padStart(4, '0'))</script></span></div>
+                    </div>
+                </div>
+                
+                <div id="llmEnhancedBadge" style="display: none;" class="mb-3">
+                    <span class="badge bg-primary">
+                        <i class="fas fa-robot"></i> Enhanced by Llama 3.3 70B
+                    </span>
+                    <small class="text-muted d-block mt-1">Results enhanced with advanced AI for more detailed insights</small>
+                </div>
+                <div id="llmErrorBadge" style="display: none;" class="mb-3">
+                    <span class="badge bg-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Basic Analysis Only
+                    </span>
+                    <small class="text-muted d-block mt-1" id="llmErrorMessage">Enhanced AI analysis unavailable</small>
+                </div>
+                <div class="result-section mb-4">
+                    <h4>Stage Assessment</h4>
+                    <div id="stagePrediction" class="alert alert-info"></div>
+                    <div class="progress mb-2">
+                        <div id="confidenceBar" class="progress-bar" role="progressbar"></div>
+                    </div>
+                </div>
+                <div class="result-section mb-4">
+                    <h4>Detailed Analysis</h4>
+                    <div id="educationalInfo" class="analysis-details hospital-report"></div>
+                    <div id="modelInfo" class="text-muted mt-2" style="display: none;">
+                        <small><i class="fas fa-info-circle"></i> <span id="modelUsed"></span></small>
+                    </div>
+                </div>
+                <div class="result-section">
+                    <div id="disclaimer" class="alert alert-warning"></div>
+                </div>
+                <button class="btn btn-primary mt-3" onclick="downloadReport()">
+                    <i class="fas fa-download"></i> Download Detailed Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Required Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+    <!-- Copy all JavaScript code -->
+    <script>
+        // Form submission handler
+        document.getElementById('analysisForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show overlay and loading spinner
+            const overlay = document.getElementById('analysisOverlay');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const analysisResults = document.getElementById('analysisResults');
+            
+            overlay.style.display = 'block';
+            loadingSpinner.style.display = 'block';
+            analysisResults.style.display = 'none';
+
+            try {
+                const formData = new FormData(this);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Update results in the overlay
+                    document.getElementById('stagePrediction').textContent = 
+                        `${result.prediction.stage} (Confidence: ${result.prediction.confidence})`;
+                    
+                    const confidenceValue = parseFloat(result.prediction.confidence);
+                    const confidenceBar = document.getElementById('confidenceBar');
+                    confidenceBar.style.width = `${confidenceValue}%`;
+                    confidenceBar.setAttribute('aria-valuenow', confidenceValue);
+                    
+                    // Set current date in report header
+                    const currentDate = new Date();
+                    document.getElementById('reportDate').textContent = currentDate.toLocaleDateString('en-US', {
+                        month: 'long', 
+                        day: 'numeric', 
+                        year: 'numeric'
+                    });
+                    
+                    // Format the educational information with subheadings
+                    document.getElementById('educationalInfo').innerHTML = formatEducationalInfo(result.educational_information);
+                    document.getElementById('disclaimer').textContent = result.disclaimer;
+                    
+                    // Show LLM enhancement status
+                    if (result.llm_enhanced === true) {
+                        document.getElementById('llmEnhancedBadge').style.display = 'block';
+                        document.getElementById('llmErrorBadge').style.display = 'none';
+                        
+                        // Show model info if available
+                        if (result.model_used) {
+                            document.getElementById('modelInfo').style.display = 'block';
+                            document.getElementById('modelUsed').textContent = `Analysis provided by: ${result.model_used}`;
+                        }
+                    } else if (result.llm_error) {
+                        document.getElementById('llmEnhancedBadge').style.display = 'none';
+                        document.getElementById('llmErrorBadge').style.display = 'block';
+                        document.getElementById('llmErrorMessage').textContent = `Enhanced AI analysis unavailable: ${result.llm_error}`;
+                    } else {
+                        // No enhancement info available
+                        document.getElementById('llmEnhancedBadge').style.display = 'none';
+                        document.getElementById('llmErrorBadge').style.display = 'none';
+                    }
+
+                    // Hide loading spinner and show results
+                    loadingSpinner.style.display = 'none';
+                    analysisResults.style.display = 'block';
+                } else {
+                    throw new Error(result.error || 'Failed to analyze data');
+                }
+            } catch (error) {
+                console.error('Error during analysis:', error);
+                
+                // Show error message
+                document.getElementById('stagePrediction').textContent = 'Error analyzing data';
+                document.getElementById('educationalInfo').textContent = `An error occurred: ${error.message}. Please try again.`;
+                document.getElementById('disclaimer').textContent = 'Please contact support if the problem persists.';
+                
+                // Hide loading spinner and show results
+                loadingSpinner.style.display = 'none';
+                analysisResults.style.display = 'block';
+                
+                // Hide LLM badges
+                document.getElementById('llmEnhancedBadge').style.display = 'none';
+                document.getElementById('llmErrorBadge').style.display = 'none';
+            }
+        });
+
+        // Close button for overlay
+        document.querySelector('.close-button').addEventListener('click', function() {
+            document.getElementById('analysisOverlay').style.display = 'none';
+        });
+
+        // Close overlay when clicking outside the content
+        document.getElementById('analysisOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+
+        // Handle surgery radio buttons
+        document.querySelectorAll('input[name="hasSurgeries"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const surgeryDetails = document.getElementById('surgeryDetails');
+                if (this.value === 'yes') {
+                    surgeryDetails.classList.add('show');
+                } else {
+                    surgeryDetails.classList.remove('show');
+                }
+            });
+        });
+
+        // Handle multiple image uploads
+        document.getElementById('image').addEventListener('change', function(e) {
+            const container = document.getElementById('imagePreviewContainer');
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                if (file.size > 10 * 1024 * 1024) {
+                    alert(`File ${file.name} exceeds 10MB limit`);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-4';
+                    
+                    // Create unique ID for this image
+                    const imageId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    
+                    col.innerHTML = `
+                        <div class="card image-preview-card position-relative">
+                            <img src="${e.target.result}" class="preview-img" alt="${file.name}">
+                            <button type="button" class="remove-image-btn" data-image-id="${imageId}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="card-body">
+                                <p class="card-text text-truncate mb-1">${file.name}</p>
+                                <p class="image-info mb-0">${(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(col);
+                    
+                    // Add click handler for remove button
+                    const removeBtn = col.querySelector('.remove-image-btn');
+                    removeBtn.addEventListener('click', function() {
+                        col.remove();
+                        updateFormData();
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Function to update form data with current images
+        function updateFormData() {
+            const formData = new FormData(document.getElementById('analysisForm'));
+            const imageContainer = document.getElementById('imagePreviewContainer');
+            const images = imageContainer.querySelectorAll('.preview-img');
+            
+            // Clear existing images from form data
+            formData.delete('images');
+            
+            // Add current images to form data
+            images.forEach((img, index) => {
+                // Convert base64 to blob
+                fetch(img.src)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        formData.append('images[]', blob, `image_${index}.jpg`);
+                    });
+            });
+            
+            return formData;
+        }
+
+        // Clear file input when images are removed
+        function clearFileInput() {
+            const fileInput = document.getElementById('image');
+            fileInput.value = '';
+        }
+
+        // Function to download the analysis report
+        function downloadReport() {
+            const stagePrediction = document.getElementById('stagePrediction').textContent;
+            const educationalInfo = document.getElementById('educationalInfo').textContent;
+            const disclaimer = document.getElementById('disclaimer').textContent;
+
+            // Process educational info to remove all asterisks and bullet points
+            const processedInfo = educationalInfo
+                .replace(/\*/g, '')         // Remove all asterisks
+                .replace(/\*\*/g, '')       // Remove double asterisks
+                .replace(/- /g, '')         // Remove bullet points with dash
+                .replace(/• /g, '')         // Remove bullet points with bullet character
+                .replace(/\n[-•]\s*/g, '\n') // Remove bullet points at line beginnings
+                .trim();
+
+            const reportContent = `
+                Endometriosis Analysis Report
+                ===========================
+                
+                ${stagePrediction}
+                
+                Detailed Analysis:
+                ----------------
+                ${processedInfo}
+                
+                Disclaimer:
+                ----------
+                ${disclaimer}
+                
+                Generated on: ${new Date().toLocaleString()}
+            `;
+
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'endometriosis-analysis-report.txt';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // Direct Voice Input Functionality
+        const voiceInputBtn = document.getElementById('voiceInputBtn');
+        const symptomDescription = document.getElementById('symptomDescription');
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+        
+        // Add voice status element
+        const voiceStatus = document.createElement('div');
+        voiceStatus.className = 'voice-status';
+        symptomDescription.parentNode.appendChild(voiceStatus);
+        
+        // Check for browser compatibility
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            voiceInputBtn.style.display = 'none';
+            console.error('Voice input is not supported in this browser');
+        }
+        
+        // Initialize MediaRecorder when button is clicked
+        voiceInputBtn.addEventListener('click', async () => {
+            if (isRecording) {
+                // Stop recording
+                stopRecording();
+                return;
+            }
+            
+            try {
+                // Request microphone permission
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        sampleSize: 16,
+                        volume: 1
+                    }
+                });
+                
+                // Start recording
+                startRecording(stream);
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    voiceStatus.textContent = 'Microphone access was denied. Please allow microphone access to use voice input.';
+                } else {
+                    voiceStatus.textContent = 'Error accessing microphone: ' + error.message;
+                }
+                setTimeout(() => {
+                    voiceStatus.textContent = '';
+                }, 5000);
+            }
+        });
+        
+        function startRecording(stream) {
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus',
+                audioBitsPerSecond: 16000
+            });
+            
+            mediaRecorder.addEventListener('dataavailable', event => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            });
+            
+            mediaRecorder.addEventListener('stop', async () => {
+                // Process audio data
+                voiceStatus.textContent = 'Processing your speech...';
+                
+                try {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+                    
+                    // Check if Groq should be used for transcription
+                    const useGroq = document.getElementById('useGroq').checked;
+                    formData.append('use_groq', useGroq.toString());
+                    
+                    // Show appropriate processing message
+                    voiceStatus.textContent = useGroq ? 
+                        'Processing your speech with medical AI...' :
+                        'Processing your speech...';
+                    
+                    // Send to server for processing
+                    const response = await fetch('/convert-speech', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok && result.text) {
+                        // Add text to textarea
+                        const currentText = symptomDescription.value;
+                        const newText = result.text.trim();
+                        symptomDescription.value = currentText + (currentText && newText ? ' ' : '') + newText;
+                        
+                        // Show processor info
+                        if (result.enhanced) {
+                            voiceStatus.innerHTML = '<span class="text-success">✓ Enhanced transcription with ' + result.processor + '</span>';
+                        } else {
+                            voiceStatus.textContent = 'Speech converted successfully!';
+                        }
+                        
+                        setTimeout(() => {
+                            voiceStatus.textContent = '';
+                        }, 5000);
+                    } else {
+                        throw new Error(result.error || 'Failed to convert speech to text');
+                    }
+                } catch (error) {
+                    console.error('Speech-to-text error:', error);
+                    voiceStatus.textContent = 'Error: ' + error.message;
+                    setTimeout(() => {
+                        voiceStatus.textContent = '';
+                    }, 5000);
+                }
+                
+                voiceInputBtn.classList.remove('recording');
+                isRecording = false;
+            });
+            
+            // Start recording
+            mediaRecorder.start();
+            voiceInputBtn.classList.add('recording');
+            voiceStatus.textContent = 'Listening... Click the microphone again to stop.';
+            isRecording = true;
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+        }
+        
+        // Text-to-speech functionality
+        const ttsButton = document.getElementById('ttsButton');
+        let audioPlayer = null;
+        let isReading = false;
+        
+        ttsButton.addEventListener('click', async function() {
+            if (isReading) {
+                // Stop current audio playback
+                if (audioPlayer) {
+                    audioPlayer.pause();
+                    audioPlayer = null;
+                }
+                ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                ttsButton.classList.remove('btn-primary');
+                ttsButton.classList.add('btn-outline-primary');
+                isReading = false;
+                return;
+            }
+            
+            try {
+                // Update button state
+                ttsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                ttsButton.disabled = true;
+                
+                // Collect text from report sections
+                const stagePrediction = document.getElementById('stagePrediction').textContent.trim();
+                const educationalInfo = document.getElementById('educationalInfo').textContent.trim();
+                const disclaimer = document.getElementById('disclaimer').textContent.trim();
+                
+                // Combine into a complete report text
+                const reportText = `Analysis Report. ${stagePrediction}. ${educationalInfo}. Disclaimer: ${disclaimer}`;
+                
+                // Send request to server for TTS conversion
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: reportText })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate speech');
+                }
+                
+                // Create audio from the response
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Create and configure audio player
+                audioPlayer = new Audio(audioUrl);
+                
+                audioPlayer.addEventListener('ended', function() {
+                    // Reset button when audio ends
+                    ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    ttsButton.classList.remove('btn-primary');
+                    ttsButton.classList.add('btn-outline-primary');
+                    isReading = false;
+                });
+                
+                audioPlayer.addEventListener('error', function(e) {
+                    console.error('Audio playback error:', e);
+                    ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    alert('Error generating speech: ' + e.message);
+                });
+                
+                // Start playing the audio
+                audioPlayer.play();
+                
+                // Update button state
+                ttsButton.innerHTML = '<i class="fas fa-pause"></i>';
+                ttsButton.classList.remove('btn-outline-primary');
+                ttsButton.classList.add('btn-primary');
+                isReading = true;
+                
+            } catch (error) {
+                console.error('Text-to-speech error:', error);
+                ttsButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                alert('Error generating speech: ' + error.message);
+            } finally {
+                ttsButton.disabled = false;
+            }
+        });
+    </script>
+
+    <!-- Add this before closing </body> tag -->
+    <script>
+        // Initialize i18next
+        async function initializeTranslations() {
+            try {
+                await i18next
+                    .use(i18nextHttpBackend)
+                    .init({
+                        lng: localStorage.getItem('selectedLanguage') || 'en',
+                        fallbackLng: 'en',
+                        debug: true,
+                        backend: {
+                            loadPath: '/translations/{{lng}}',
+                            parse: (data) => JSON.parse(data),
+                            allowMultiLoading: false
+                        },
+                        interpolation: {
+                            escapeValue: false
+                        }
+                    });
+
+                console.log('i18next initialized successfully');
+                await updateContent();
+                updateLanguageDisplay(i18next.language);
+                
+            } catch (error) {
+                console.error('Error initializing translations:', error);
+            }
+        }
+
+        // Function to update the language display in the dropdown
+        function updateLanguageDisplay(lng) {
+            const currentLangElement = document.querySelector('.current-language');
+            const selectedLangElement = document.querySelector(`[data-lang="${lng}"]`);
+            
+            if (currentLangElement && selectedLangElement) {
+                // Update the dropdown button text
+                currentLangElement.textContent = selectedLangElement.textContent.split(' ')[0];
+                
+                // Update checkmarks for selected language
+                document.querySelectorAll('.dropdown-item[data-lang] i.fa-check').forEach(icon => {
+                    icon.classList.add('d-none');
+                });
+                
+                // Show checkmark for selected language
+                const checkIcon = selectedLangElement.querySelector('i.fa-check');
+                if (checkIcon) {
+                    checkIcon.classList.remove('d-none');
+                }
+            }
+        }
+
+        // Function to update content based on selected language
+        async function updateContent() {
+            try {
+                console.log('Updating content for language:', i18next.language);
+
+                // Update patient information section
+                const patientInfoSection = document.querySelector('[data-section="patientInfo"]');
+                if (patientInfoSection) {
+                    const title = patientInfoSection.querySelector('.section-title h3');
+                    if (title) title.textContent = await i18next.t('patientInfo.title');
+
+                    const welcome = patientInfoSection.querySelector('.positive-message');
+                    if (welcome) welcome.textContent = await i18next.t('patientInfo.welcome');
+
+                    // Update form labels
+                    const labels = patientInfoSection.querySelectorAll('.form-label');
+                    for (const label of labels) {
+                        const key = label.getAttribute('data-i18n');
+                        if (key) {
+                            label.textContent = await i18next.t(`patientInfo.${key}`);
+                        }
+                    }
+
+                    // Update select options
+                    const select = patientInfoSection.querySelector('select');
+                    if (select) {
+                        const options = select.querySelectorAll('option');
+                        for (const option of options) {
+                            const key = option.getAttribute('data-i18n');
+                            if (key) {
+                                option.textContent = await i18next.t(`patientInfo.${key}`);
+                            }
+                        }
+                    }
+                }
+
+                // Update symptoms section
+                const symptomsSection = document.querySelector('[data-section="symptoms"]');
+                if (symptomsSection) {
+                    const title = symptomsSection.querySelector('.section-title h3');
+                    if (title) title.textContent = await i18next.t('symptoms.title');
+
+                    const subtitle = symptomsSection.querySelector('.positive-message');
+                    if (subtitle) subtitle.textContent = await i18next.t('symptoms.subtitle');
+
+                    // Update pain intensity labels
+                    const painLabels = symptomsSection.querySelectorAll('.pain-level-labels span');
+                    painLabels.forEach(async (label) => {
+                        const key = label.getAttribute('data-i18n');
+                        if (key) {
+                            label.textContent = await i18next.t(`symptoms.${key}`);
+                        }
+                    });
+                }
+
+                // Update symptom categories
+                await updateSymptomCategories();
+
+                // Update buttons and other UI elements
+                await updateButtons();
+                await updatePlaceholders();
+                await updateTooltips();
+
+                console.log('Content update completed successfully');
+            } catch (error) {
+                console.error('Error updating content:', error);
+            }
+        }
+
+        // Function to update symptom categories
+        async function updateSymptomCategories() {
+            const categories = ['menstrual', 'digestive', 'urinary', 'mental', 'sexual', 'fertility'];
+            for (const category of categories) {
+                const section = document.querySelector(`[data-category="${category}"]`);
+                if (section) {
+                    // Update category title
+                    const title = section.querySelector('.card-title');
+                    if (title) {
+                        const translatedTitle = await i18next.t(`symptoms.categories.${category}.title`);
+                        title.innerHTML = `<i class="fas fa-${getCategoryIcon(category)} text-primary me-2"></i>${translatedTitle}`;
+                    }
+
+                    // Update checkboxes
+                    const items = await i18next.t(`symptoms.categories.${category}.items`, { returnObjects: true });
+                    const labels = section.querySelectorAll('.form-check-label');
+                    labels.forEach((label, index) => {
+                        if (items[index]) {
+                            label.textContent = items[index];
+                        }
+                    });
+                }
+            }
+        }
+
+        // Helper function to get category icons
+        function getCategoryIcon(category) {
+            const icons = {
+                menstrual: 'calendar-alt',
+                digestive: 'stomach',
+                urinary: 'toilet',
+                mental: 'brain',
+                sexual: 'heart',
+                fertility: 'baby'
+            };
+            return icons[category] || 'check-circle';
+        }
+
+        // Function to update buttons
+        async function updateButtons() {
+            // Update submit button
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>${await i18next.t('common.submit')}`;
+            }
+
+            // Update other buttons
+            document.querySelectorAll('[data-i18n-btn]').forEach(async (btn) => {
+                const key = btn.getAttribute('data-i18n-btn');
+                if (key) {
+                    const icon = btn.querySelector('i')?.outerHTML || '';
+                    btn.innerHTML = icon + ' ' + await i18next.t(key);
+                }
+            });
+        }
+
+        // Function to update placeholders
+        async function updatePlaceholders() {
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(async (input) => {
+                const key = input.getAttribute('data-i18n-placeholder');
+                if (key) {
+                    input.placeholder = await i18next.t(key);
+                }
+            });
+        }
+
+        // Function to update tooltips
+        async function updateTooltips() {
+            document.querySelectorAll('[data-i18n-tooltip]').forEach(async (element) => {
+                const key = element.getAttribute('data-i18n-tooltip');
+                if (key) {
+                    const tooltip = bootstrap.Tooltip.getInstance(element);
+                    if (tooltip) {
+                        tooltip.dispose();
+                    }
+                    element.title = await i18next.t(key);
+                    new bootstrap.Tooltip(element);
+                }
+            });
+        }
+
+        // Initialize when document is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize translations
+            initializeTranslations().catch(console.error);
+
+            // Initialize the dropdown
+            const dropdownToggle = document.getElementById('languageSelector');
+            const dropdown = new bootstrap.Dropdown(dropdownToggle);
+
+            // Add click handlers for language selection
+            document.querySelectorAll('.dropdown-item[data-lang]').forEach(item => {
+                item.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    
+                    const lang = this.getAttribute('data-lang');
+                    console.log('Language selected:', lang);
+                    
+                    try {
+                        // Save selected language
+                        localStorage.setItem('selectedLanguage', lang);
+                        
+                        // Change language
+                        await i18next.changeLanguage(lang);
+                        
+                        // Update display
+                        updateLanguageDisplay(lang);
+                        
+                        // Update content
+                        await updateContent();
+                        
+                        // Hide dropdown
+                        dropdown.hide();
+                        
+                        console.log('Language changed successfully to:', lang);
+                    } catch (error) {
+                        console.error('Error changing language:', error);
+                    }
+                });
+            });
+        });
+
+        // Add language change event listener
+        i18next.on('languageChanged', async (lng) => {
+            console.log('Language changed event triggered:', lng);
+            try {
+                await updateContent();
+                updateLanguageDisplay(lng);
+            } catch (error) {
+                console.error('Error handling language change:', error);
+            }
+        });
+    </script>
+
+    <!-- Add Bootstrap initialization for dropdown -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all dropdowns
+            var dropdowns = document.querySelectorAll('.dropdown-toggle');
+            dropdowns.forEach(function(dropdown) {
+                new bootstrap.Dropdown(dropdown);
+            });
+        });
+    </script>
+
+    <!-- Weekly Progress Tracking JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize FullCalendar for symptom tracking
+            if (document.getElementById('symptomCalendar')) {
+                const calendarEl = document.getElementById('symptomCalendar');
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek'
+                    },
+                    height: 300,
+                    events: [
+                        {
+                            title: 'Severe Pain',
+                            start: new Date(new Date().setDate(new Date().getDate() - 8)),
+                            color: '#dc3545'
+                        },
+                        {
+                            title: 'Moderate Pain',
+                            start: new Date(new Date().setDate(new Date().getDate() - 7)),
+                            color: '#ffc107'
+                        },
+                        {
+                            title: 'Mild Pain',
+                            start: new Date(new Date().setDate(new Date().getDate() - 3)),
+                            color: '#198754'
+                        },
+                        {
+                            title: 'Medication Change',
+                            start: new Date(new Date().setDate(new Date().getDate() - 14)),
+                            color: '#0d6efd'
+                        }
+                    ]
+                });
+                calendar.render();
+            }
+            
+            // Initialize Chart.js for pain trends
+            if (document.getElementById('painTrendsChart')) {
+                const ctx = document.getElementById('painTrendsChart').getContext('2d');
+                
+                // Generate dates for the last 4 weeks
+                const dates = [];
+                for (let i = 28; i >= 0; i -= 4) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    dates.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                }
+                
+                // Sample data
+                const painData = [7, 6, 8, 5, 6, 4, 3];
+                
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: 'Pain Level (0-10)',
+                            data: painData,
+                            backgroundColor: 'rgba(74, 144, 226, 0.2)',
+                            borderColor: 'rgba(74, 144, 226, 1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: 'rgba(74, 144, 226, 1)',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 10,
+                                title: {
+                                    display: true,
+                                    text: 'Pain Level'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Initialize medication checkboxes with saved state
+            document.querySelectorAll('.med-reminder-item .form-check-input').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    // In a real app, this would save to a database
+                    console.log(`Medication ${this.id} status changed to: ${this.checked}`);
+                });
+            });
+            
+            // Initialize buttons for community interactions
+            document.querySelectorAll('.community-update-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    console.log('Community update clicked: ', this.textContent.trim());
+                });
+            });
+        });
+    </script>
+
+    <!-- Add additional styles for the hospital-style report -->
+    <style>
+        .analysis-overlay {
+            backdrop-filter: blur(5px);
+        }
+        
+        .analysis-content {
+            max-width: 850px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            border-left: 5px solid #4A90E2;
+        }
+        
+        .hospital-report {
+            background-color: #FFFFFF;
+            padding: 20px;
+            border: 1px solid #E0E0E0;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            font-family: 'Poppins', 'Arial', sans-serif;
+            line-height: 1.7;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* TTS Button Styling */
+        #ttsButton {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            z-index: 20;
+        }
+        
+        #ttsButton:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        #ttsButton.btn-primary {
+            background: linear-gradient(135deg, #4A90E2, #5C9CE5);
+            border: none;
+        }
+        
+        #ttsButton.btn-primary i {
+            color: white;
+        }
+        
+        .hospital-report::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(to bottom, #4A90E2, #5C9CE5);
+        }
+        
+        /* Add watermark effect */
+        .analysis-content::after {
+            content: "Endometrics";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 6rem;
+            color: rgba(74, 144, 226, 0.03);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .result-section {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .result-section h4 {
+            color: #2C3E50;
+            font-weight: 600;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            position: relative;
+        }
+        
+        .result-section h4::after {
+            content: "";
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 50px;
+            height: 2px;
+            background-color: #4A90E2;
+        }
+        
+        #stagePrediction {
+            font-size: 1.1rem;
+            font-weight: 500;
+            border-left: 4px solid #4A90E2;
+        }
+        
+        .btn-primary {
+            padding: 10px 25px;
+            font-weight: 500;
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.2);
+        }
+    </style>
+
+    <!-- Update the script to format the analysis with subheadings -->
+    <script>
+        // Function to format the educational info with subheadings
+        function formatEducationalInfo(info) {
+            if (!info) return '';
+            
+            // Split into paragraphs
+            let paragraphs = info.split('\n\n').filter(p => p.trim().length > 0);
+            
+            // Add subheadings based on content patterns
+            let formatted = '';
+            
+            // The first paragraph is typically an introduction
+            if (paragraphs.length > 0) {
+                formatted += `<div class="report-section">
+                    <h5 class="subheading">Assessment Overview</h5>
+                    <p>${paragraphs[0]}</p>
+                </div>`;
+            }
+            
+            // Second paragraph often explains the stage meaning
+            if (paragraphs.length > 1) {
+                formatted += `<div class="report-section">
+                    <h5 class="subheading">Stage Explanation</h5>
+                    <p>${paragraphs[1]}</p>
+                </div>`;
+            }
+            
+            // Look for symptoms analysis
+            let symptomsIndex = -1;
+            for (let i = 2; i < paragraphs.length; i++) {
+                if (paragraphs[i].toLowerCase().includes('symptom') || 
+                    paragraphs[i].toLowerCase().includes('notable')) {
+                    symptomsIndex = i;
+                    break;
+                }
+            }
+            
+            if (symptomsIndex > 0) {
+                formatted += `<div class="report-section">
+                    <h5 class="subheading">Symptoms Analysis</h5>
+                    <p>${paragraphs[symptomsIndex]}</p>
+                </div>`;
+            }
+            
+            // Look for recommendations
+            let recommendationsIndex = -1;
+            for (let i = 0; i < paragraphs.length; i++) {
+                if (paragraphs[i].toLowerCase().includes('recommend') || 
+                    paragraphs[i].toLowerCase().includes('suggest') ||
+                    paragraphs[i].toLowerCase().includes('following') ||
+                    paragraphs[i].toLowerCase().includes('1.')) {
+                    recommendationsIndex = i;
+                    break;
+                }
+            }
+            
+            if (recommendationsIndex > 0) {
+                // Split the recommendations by numbered items
+                const recParagraph = paragraphs[recommendationsIndex];
+                let formattedRecs = recParagraph;
+                
+                // Replace numbered items with styled numbers
+                formattedRecs = formattedRecs.replace(/(\d+\.\s)/g, '<span class="recommendation-number">$1</span>');
+                
+                formatted += `<div class="report-section">
+                    <h5 class="subheading">Recommendations</h5>
+                    <p>${formattedRecs}</p>
+                </div>`;
+            }
+            
+            // Add any remaining paragraphs under Additional Information
+            const processedIndices = [0, 1, symptomsIndex, recommendationsIndex].filter(i => i >= 0);
+            const remainingParagraphs = paragraphs.filter((p, idx) => !processedIndices.includes(idx));
+            
+            if (remainingParagraphs.length > 0) {
+                formatted += `<div class="report-section">
+                    <h5 class="subheading">Additional Information</h5>
+                    ${remainingParagraphs.map(p => `<p>${p}</p>`).join('')}
+                </div>`;
+            }
+            
+            // If we couldn't parse properly, fallback to original with minimal formatting
+            if (formatted === '') {
+                formatted = `<div class="report-section">
+                    ${paragraphs.map(p => `<p>${p}</p>`).join('')}
+                </div>`;
+            }
+            
+            return formatted;
+        }
+    </script>
+
+    <!-- Add more hospital-style report CSS -->
+    <style>
+        .report-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .report-section:last-child {
+            border-bottom: none;
+        }
+        
+        .subheading {
+            color: #4A90E2;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-left: 10px;
+            border-left: 3px solid #4A90E2;
+            background-color: rgba(74, 144, 226, 0.05);
+            padding: 5px 10px;
+            border-radius: 3px;
+        }
+        
+        .recommendation-number {
+            font-weight: 600;
+            color: #4A90E2;
+            margin-right: 3px;
+        }
+        
+        #disclaimer {
+            background-color: #FFF9E6;
+            border-left: 4px solid #FFC107;
+            font-size: 0.9rem;
+        }
+        
+        .analysis-content h2 {
+            color: #2C3E50;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .analysis-content h2 i {
+            margin-right: 10px;
+            color: #4A90E2;
+        }
+        
+        /* Analysis header styles */
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #E0E0E0;
+        }
+        
+        .analysis-logo {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #2C3E50;
+        }
+        
+        .analysis-logo i {
+            margin-right: 10px;
+            color: #4A90E2;
+            font-size: 1.4rem;
+        }
+        
+        .analysis-meta {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        /* Add print style improvements */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .analysis-content, .analysis-content * {
+                visibility: visible;
+            }
+            .analysis-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+            }
+            .close-button {
+                display: none;
+            }
+        }
+    </style>
+
+    <!-- BMI Calculator Overlay -->
+    <div class="modal fade" id="bmiCalculatorModal" tabindex="-1" aria-labelledby="bmiCalculatorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bmiCalculatorModalLabel">BMI Calculator</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="heightCm" class="form-label">Height (cm)</label>
+                        <input type="number" class="form-control" id="heightCm" min="50" max="250" placeholder="Enter your height">
+                    </div>
+                    <div class="mb-3">
+                        <label for="weightKg" class="form-label">Weight (kg)</label>
+                        <input type="number" class="form-control" id="weightKg" min="20" max="300" placeholder="Enter your weight">
+                    </div>
+                    <div class="mt-4 text-center d-none" id="bmiResult">
+                        <div class="p-3 rounded mb-3">
+                            <h4>Your BMI is: <span id="bmiValue" class="text-primary">0</span></h4>
+                            <div id="bmiCategory" class="mt-2 p-2 rounded"></div>
+                        </div>
+                        <div class="bmi-scale mt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Underweight</span>
+                                <span>Normal</span>
+                                <span>Overweight</span>
+                                <span>Obese</span>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: 18.5%" aria-valuenow="18.5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>&lt;18.5</small>
+                                </div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 6.5%" aria-valuenow="6.5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>18.5-25</small>
+                                </div>
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: 5%" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100">
+                                    <small>25-30</small>
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: 70%" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">
+                                    <small>&gt;30</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="calculateBmiInModal">Calculate</button>
+                    <button type="button" class="btn btn-success d-none" id="useBmiValue">Use This Value</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // BMI Calculator
+            const calculateBmiBtn = document.getElementById('calculateBmiBtn');
+            const bmiCalculatorModal = new bootstrap.Modal(document.getElementById('bmiCalculatorModal'));
+            const calculateBmiInModal = document.getElementById('calculateBmiInModal');
+            const useBmiValue = document.getElementById('useBmiValue');
+            const bmiResult = document.getElementById('bmiResult');
+            const bmiValue = document.getElementById('bmiValue');
+            const bmiCategory = document.getElementById('bmiCategory');
+            const heightCm = document.getElementById('heightCm');
+            const weightKg = document.getElementById('weightKg');
+            const bmiInput = document.getElementById('bmi');
+            
+            // Open BMI calculator modal
+            calculateBmiBtn.addEventListener('click', function() {
+                bmiCalculatorModal.show();
+            });
+            
+            // Calculate BMI in modal
+            calculateBmiInModal.addEventListener('click', function() {
+                const height = parseFloat(heightCm.value) / 100; // Convert cm to meters
+                const weight = parseFloat(weightKg.value);
+                
+                if (!height || !weight || height <= 0 || weight <= 0) {
+                    alert('Please enter valid height and weight values.');
+                    return;
+                }
+                
+                const bmi = weight / (height * height);
+                bmiValue.textContent = bmi.toFixed(2);
+                
+                // Show result and Use This Value button
+                bmiResult.classList.remove('d-none');
+                useBmiValue.classList.remove('d-none');
+                
+                // Set BMI category and color
+                let category, colorClass;
+                if (bmi < 18.5) {
+                    category = "Underweight";
+                    colorClass = "bg-info text-white";
+                } else if (bmi < 25) {
+                    category = "Normal weight";
+                    colorClass = "bg-success text-white";
+                } else if (bmi < 30) {
+                    category = "Overweight";
+                    colorClass = "bg-warning text-dark";
+                } else {
+                    category = "Obese";
+                    colorClass = "bg-danger text-white";
+                }
+                
+                bmiCategory.textContent = category;
+                bmiCategory.className = 'mt-2 p-2 rounded ' + colorClass;
+            });
+            
+            // Use calculated BMI value
+            useBmiValue.addEventListener('click', function() {
+                bmiInput.value = bmiValue.textContent;
+                bmiCalculatorModal.hide();
+            });
+        });
+    </script>
+</body>
+</html> 
