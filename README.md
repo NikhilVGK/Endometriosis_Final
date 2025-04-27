@@ -105,9 +105,11 @@ Add images, GIFs, or screenshots if helpful!
 ## 🧪 How to Run the Project
 
 ### Requirements:
-- Node.js / Python / Docker / etc.
-- API Keys (if any)
-- .env file setup (if needed)
+- the requirements.txt file is attatched, Isstall all the reuirements
+- Node.js / Python / Flask
+- API Keys (groq api key, EvenLabsApi Key[original key not being shared for security reasons])
+- .env file setup(Groq_API_Key= 'your api key' , EVENLABS_API_KEY = ' YOur evenlabs Api key'
+- Once done, Run command: python app.py , or simply run the app.py file
 
 ### Local Setup:
 ```bash
@@ -123,7 +125,7 @@ npm run dev
 ```
 
 Provide any backend/frontend split or environment setup notes here.
-
+Download all the requirements in the venv and in the the global system of the system
 ---
 
 ## 🧬 Future Scope
